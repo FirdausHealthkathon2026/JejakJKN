@@ -1,0 +1,12 @@
+{
+  "name": "@jejakjkn/patient-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Patient App Simulator — QR IN/OUT (60s) & post-checkout summary confirmation only (NO live stage timeline).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5173",
+    "build": "tsc && vite build",
+    "test": "vitest run"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "realm": "jejakjkn-dev",
+  "enabled": true,
+  "roles": {
+    "realm": [
+      {"name": "patient"},
+      {"name": "simrs_scanner"},
+      {"name": "simrs_clinical_sender"},
+      {"name": "simrs_pharmacy_sender"},
+      {"name": "verifier"},
+      {"name": "review_supervisor"},
+      {"name": "platform_admin"},
+      {"name": "internal_service"}
+    ]
+  }
+}

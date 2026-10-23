@@ -1,0 +1,73 @@
+openapi: 3.1.0
+info:
+  title: JejakJKN Evidence & Confirmation Service API
+  version: 1.0.0
+paths:
+  /api/v1/patient/encounters/{id}/checkout-summary:
+    get:
+      operationId: getPatientCheckoutSummary
+      summary: Get frozen checkout summary (available only after valid CHECK_OUT)
+      responses:
+        "200":
+          description: Checkout summary snapshot
+        "409":
+          description: Encounter not checked out or snapshot not ready
+  /api/v1/patient/checkout-summaries/{snapshot_id}/responses:
+    post:
+      operationId: submitPatientConfirmation
+      summary: Submit itemized patient confirmation or dispute on frozen snapshot
+      responses:
+        "201":
+          description: Confirmation recorded
+  /api/v1/patient/checkout-summaries/{snapshot_id}/response:
+    get:
+      operationId: getPatientConfirmation
+      responses:
+        "200":
+          description: Recorded patient response
+  /api/v1/integrations/encounters/{id}/events:
+    post:
+      operationId: ingestSimrsClinicalEvent
+      summary: Ingest diagnosis, procedure, medication dispense, or stage completion from SIMRS adapter
+      responses:
+        "201":
+          description: Evidence version persisted
+  /api/v1/integrations/encounters/{id}/corrections:
+    post:
+      operationId: ingestSimrsCorrection
+      summary: Append new immutable version for source record
+      responses:
+        "201":
+          description: Evidence correction version persisted
+  /api/v1/integrations/encounters/{id}/cancellations:
+    post:
+      operationId: ingestSimrsCancellation
+      summary: Append cancellation version for source record
+      responses:
+        "200":
+          description: Evidence cancelled
+  /api/v1/integrations/encounters/{id}/sync-complete:
+    post:
+      operationId: markEncounterSyncComplete
+      summary: Record SIMRS end-of-visit sequence watermark
+      responses:
+        "200":
+          description: Sync watermark evaluated
+  /api/v1/integrations/encounters/{id}/ingestion-status:
+    get:
+      operationId: getEncounterIngestionStatus
+      responses:
+        "200":
+          description: Delivery and revision status
+  /internal/v1/encounters/{id}/evidence-snapshots:
+    post:
+      operationId: pinVerificationEvidenceSnapshot
+      responses:
+        "201":
+          description: Immutable evidence snapshot pinned for verification run
+  /internal/v1/evidence-snapshots/{id}:
+    get:
+      operationId: getVerificationEvidenceSnapshot
+      responses:
+        "200":
+          description: Pinned evidence snapshot payload

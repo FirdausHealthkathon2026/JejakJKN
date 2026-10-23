@@ -1,0 +1,12 @@
+{
+  "name": "@jejakjkn/simrs-a-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SIMRS-A Web Simulator — Hospital queue, QR scanner, clinical/pharmacy recording, and adapter sync monitor.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5174",
+    "build": "tsc && vite build",
+    "test": "vitest run"
+  }
+}

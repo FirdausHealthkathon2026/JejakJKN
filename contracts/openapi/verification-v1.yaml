@@ -1,0 +1,53 @@
+openapi: 3.1.0
+info:
+  title: JejakJKN Claim Verification & Rules Service API
+  version: 1.0.0
+paths:
+  /api/v1/verifications:
+    post:
+      operationId: requestClaimVerification
+      summary: Request verification of an external claim against all candidate encounters
+      responses:
+        "202":
+          description: Verification job queued
+  /api/v1/verifications/{id}:
+    get:
+      operationId: getVerificationAssessment
+      summary: Get 4-dimensional verification result
+      responses:
+        "200":
+          description: Assessment summary
+  /api/v1/verifications/{id}/candidates:
+    get:
+      operationId: getVerificationCandidates
+      summary: List all evaluated candidate encounters and match reasons
+      responses:
+        "200":
+          description: Evaluated candidates
+  /api/v1/verifications/{id}/findings:
+    get:
+      operationId: getVerificationFindings
+      summary: List deterministic rule findings (R001-R014) and evidence references
+      responses:
+        "200":
+          description: Deterministic rule findings
+  /api/v1/verifications/{id}/re-evaluate:
+    post:
+      operationId: reEvaluateVerification
+      summary: Trigger new immutable verification run with latest evidence snapshots
+      responses:
+        "202":
+          description: Re-evaluation run queued
+  /api/v1/verifications/history:
+    get:
+      operationId: getClaimVerificationHistory
+      summary: List all verification runs for (claim_source, claim_id)
+      responses:
+        "200":
+          description: Verification history
+  /internal/v1/verifications/{run_id}/review-package:
+    get:
+      operationId: getReviewPackageInternal
+      responses:
+        "200":
+          description: Materialized review package for review-service

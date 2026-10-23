@@ -1,0 +1,5 @@
+{
+  "exchanges": [
+    {"name": "jejakjkn.domain.v1", "vhost": "/", "type": "topic", "durable": true}
+  ]
+}

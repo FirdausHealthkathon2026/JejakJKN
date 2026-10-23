@@ -1,0 +1,12 @@
+{
+  "name": "@jejakjkn/verifier-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Verifier Portal Simulator — External claim verification request, all-candidate comparison, R001-R014 findings, and human review decisions.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5175",
+    "build": "tsc && vite build",
+    "test": "vitest run"
+  }
+}

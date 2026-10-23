@@ -1,0 +1,63 @@
+openapi: 3.1.0
+info:
+  title: JejakJKN Encounter & QR Service API
+  version: 1.0.0
+paths:
+  /api/v1/patient/qr-tokens:
+    post:
+      operationId: issuePatientQrToken
+      summary: Issue 60s single-use CHECK_IN or CHECK_OUT QR token
+      responses:
+        "201":
+          description: QR token issued
+  /api/v1/patient/encounters:
+    get:
+      operationId: listPatientEncounters
+      summary: List own encounters (check-in/out & confirmation status only; no live stages)
+      responses:
+        "200":
+          description: Paginated encounter list
+  /api/v1/patient/encounters/{id}:
+    get:
+      operationId: getPatientEncounter
+      summary: Get own encounter summary status
+      responses:
+        "200":
+          description: Encounter status
+  /api/v1/integrations/qr/check-in:
+    post:
+      operationId: redeemQrCheckIn
+      summary: Atomically redeem CHECK_IN QR and open internal encounter
+      responses:
+        "201":
+          description: Encounter created
+        "409":
+          description: QR already consumed
+        "410":
+          description: QR expired
+  /api/v1/integrations/qr/check-out:
+    post:
+      operationId: redeemQrCheckOut
+      summary: Atomically redeem CHECK_OUT QR and close encounter
+      responses:
+        "200":
+          description: Encounter checked out
+  /api/v1/integrations/encounters/{id}/exceptions:
+    post:
+      operationId: recordEncounterException
+      summary: Record authorized non-QR check-in/out exception
+      responses:
+        "201":
+          description: Exception recorded
+  /internal/v1/encounters/{id}/eligibility:
+    get:
+      operationId: getEncounterEligibilityInternal
+      responses:
+        "200":
+          description: Internal encounter eligibility metadata
+  /internal/v1/encounters/search-candidates:
+    post:
+      operationId: searchCandidateEncountersInternal
+      responses:
+        "200":
+          description: Exhaustive candidate encounter list

@@ -1,0 +1,9 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jejakjkn-adapter-sdk"
+version = "0.1.0"
+description = "Shared OAuth2 Client Credentials client, outbox retry loop, and sequence watermark sender."
+requires-python = ">=3.12"

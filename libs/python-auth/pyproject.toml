@@ -1,0 +1,9 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jejakjkn-auth"
+version = "0.1.0"
+description = "OIDC/Keycloak JWKS verifier, scope guard, tenant org binding, and actor assurance model."
+requires-python = ">=3.12"
