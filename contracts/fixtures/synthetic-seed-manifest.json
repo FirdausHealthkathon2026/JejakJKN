@@ -1,0 +1,24 @@
+{
+  "seed_version": "1.0.0",
+  "rng_seed": 2026,
+  "synthetic_only": true,
+  "counts": {
+    "participants": 20,
+    "facilities": 3,
+    "encounters": 54,
+    "evidence_items": 162,
+    "verification_requests": 52
+  },
+  "special_fixtures": {
+    "homonym_participants": ["SYNTHETIC-10001", "SYNTHETIC-10002"],
+    "multi_external_id_participant": "SYNTHETIC-10003",
+    "ambiguous_same_day_encounters": {
+      "participant": "SYNTHETIC-10004",
+      "facility": "HOSP-DEMO-001",
+      "encounters": ["0192a000-0000-7000-8000-000000000041", "0192a000-0000-7000-8000-000000000042"],
+      "description": "Two same-day encounters with identical procedure+medication evidence; E1 already linked to C1, C2 must still evaluate both and return AMBIGUOUS_MATCH (VM-03, VM-04)."
+    },
+    "overnight_inpatient_encounter": "0192a000-0000-7000-8000-000000000045",
+    "late_post_checkout_evidence_encounter": "0192a000-0000-7000-8000-000000000048"
+  }
+}

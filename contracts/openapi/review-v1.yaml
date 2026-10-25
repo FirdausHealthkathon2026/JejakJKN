@@ -1,0 +1,33 @@
+openapi: 3.1.0
+info:
+  title: JejakJKN Review & Audit Service API
+  version: 1.0.0
+x-implementation-status: planned-gate-6
+paths:
+  /api/v1/review-cases:
+    get:
+      operationId: listReviewCases
+      summary: List verifier review cases within authorized organization scope
+      responses:
+        "200":
+          description: Paginated review cases
+  /api/v1/review-cases/{id}:
+    get:
+      operationId: getReviewCaseDetail
+      summary: Get review case detail, narrative artifact, and audit trail (audited read)
+      responses:
+        "200":
+          description: Review case detail
+  /api/v1/review-cases/{id}/decisions:
+    post:
+      operationId: recordReviewDecision
+      summary: Append human reviewer decision and update hash-chained audit log
+      responses:
+        "201":
+          description: Review decision recorded
+  /internal/v1/narratives:
+    post:
+      operationId: storeNarrativeArtifactInternal
+      responses:
+        "201":
+          description: Narrative artifact persisted
