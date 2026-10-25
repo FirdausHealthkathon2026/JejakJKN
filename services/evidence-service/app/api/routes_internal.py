@@ -1,1 +1,1 @@
-"""Internal /internal/v1 routes for evidence-service."""
+"""Verification snapshot routes begin in Gate 4."""
