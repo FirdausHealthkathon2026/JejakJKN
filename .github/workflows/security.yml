@@ -1,0 +1,15 @@
+name: Security, RBAC & Secret Scan
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12', cache: pip}
+      - run: make install bootstrap up migrate seed
+      - name: Gate 1 security checks
+        run: set -a; source .env; set +a; RUN_LIVE_TESTS=1 PYTHONPATH=.deps python3 -m pytest tests/security

@@ -1,0 +1,328 @@
+name: jejakjkn
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD}
+      ENCOUNTER_DB_PASSWORD: ${ENCOUNTER_DB_PASSWORD}
+      EVIDENCE_DB_PASSWORD: ${EVIDENCE_DB_PASSWORD}
+      VERIFICATION_DB_PASSWORD: ${VERIFICATION_DB_PASSWORD}
+      REVIEW_DB_PASSWORD: ${REVIEW_DB_PASSWORD}
+      SIMRS_A_DB_PASSWORD: ${SIMRS_A_DB_PASSWORD}
+      SIMRS_B_DB_PASSWORD: ${SIMRS_B_DB_PASSWORD}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init-isolated-dbs.sh:/docker-entrypoint-initdb.d/01-init-isolated-dbs.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - ./infrastructure/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - internal
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: '-rabbitmq_management load_definitions "/etc/rabbitmq/definitions.json"'
+    volumes:
+      - ./infrastructure/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: keycloak_db
+      KC_DB_USERNAME: kc_user
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_HOSTNAME: http://localhost:8081
+      SIMRS_A_CLIENT_SECRET: ${SIMRS_A_CLIENT_SECRET}
+      SIMRS_B_CLIENT_SECRET: ${SIMRS_B_CLIENT_SECRET}
+      TEST_PATIENT_CLIENT_SECRET: ${TEST_PATIENT_CLIENT_SECRET}
+      TEST_PATIENT_2_CLIENT_SECRET: ${TEST_PATIENT_2_CLIENT_SECRET}
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./infrastructure/keycloak/realm-jejakjkn-dev.json:/opt/keycloak/data/import/realm-jejakjkn-dev.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  encounter-api:
+    build:
+      context: .
+      dockerfile: services/encounter-service/Dockerfile
+    env_file: .env
+    volumes:
+      - ./.secrets/qr-signing-private.pem:/run/secrets/qr-signing-private.pem:ro
+      - ./.secrets/qr-signing-public.pem:/run/secrets/qr-signing-public.pem:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  encounter-outbox-worker:
+    profiles: ["later-gates"]
+    build:
+      context: .
+      dockerfile: services/encounter-service/Dockerfile
+    command: ["python", "-m", "app.infrastructure.outbox_worker"]
+    depends_on:
+      encounter-api:
+        condition: service_started
+    networks:
+      - internal
+
+  evidence-api:
+    build:
+      context: .
+      dockerfile: services/evidence-service/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  evidence-outbox-worker:
+    profiles: ["later-gates"]
+    build:
+      context: .
+      dockerfile: services/evidence-service/Dockerfile
+    command: ["python", "-m", "app.infrastructure.outbox_worker"]
+    depends_on:
+      evidence-api:
+        condition: service_started
+    networks:
+      - internal
+
+  verification-api:
+    build:
+      context: .
+      dockerfile: services/verification-service/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  verification-worker:
+    profiles: ["later-gates"]
+    build:
+      context: .
+      dockerfile: services/verification-service/Dockerfile
+    command: ["python", "-m", "app.application.verification_worker"]
+    depends_on:
+      verification-api:
+        condition: service_started
+    networks:
+      - internal
+
+  verification-outbox-worker:
+    profiles: ["later-gates"]
+    build:
+      context: .
+      dockerfile: services/verification-service/Dockerfile
+    command: ["python", "-m", "app.infrastructure.outbox_worker"]
+    depends_on:
+      verification-api:
+        condition: service_started
+    networks:
+      - internal
+
+  review-api:
+    build:
+      context: .
+      dockerfile: services/review-service/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8004/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  review-outbox-worker:
+    profiles: ["later-gates"]
+    build:
+      context: .
+      dockerfile: services/review-service/Dockerfile
+    command: ["python", "-m", "app.infrastructure.outbox_worker"]
+    depends_on:
+      review-api:
+        condition: service_started
+    networks:
+      - internal
+
+  narrative-worker:
+    profiles: ["narrative"]
+    build:
+      context: .
+      dockerfile: services/narrative-worker/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      review-api:
+        condition: service_started
+    networks:
+      - internal
+
+  api-gateway:
+    image: nginx:1.27-alpine
+    ports:
+      - "${API_GATEWAY_PORT:-18080}:8080"
+    volumes:
+      - ./infrastructure/gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      encounter-api:
+        condition: service_healthy
+      evidence-api:
+        condition: service_healthy
+      verification-api:
+        condition: service_healthy
+      review-api:
+        condition: service_healthy
+    networks:
+      - internal
+
+  simrs-a-api:
+    build:
+      context: .
+      dockerfile: simulators/simrs-a-backend/Dockerfile
+    ports:
+      - "8101:8101"
+    environment:
+      JEJAKJKN_API_URL: http://api-gateway:8080
+      KEYCLOAK_TOKEN_URL: http://keycloak:8080/realms/jejakjkn-dev/protocol/openid-connect/token
+      SIMRS_CLIENT_ID: simrs-a-adapter
+      SIMRS_CLIENT_SECRET: ${SIMRS_A_CLIENT_SECRET}
+      FACILITY_EXTERNAL_CODE: HOSP-DEMO-001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api-gateway:
+        condition: service_started
+    networks:
+      - internal
+
+  simrs-b-api:
+    profiles: ["simrs-b"]
+    build:
+      context: .
+      dockerfile: simulators/simrs-b-backend/Dockerfile
+    ports:
+      - "8102:8102"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api-gateway:
+        condition: service_started
+    networks:
+      - internal
+
+  patient-web:
+    build:
+      context: apps/patient-web
+    ports:
+      - "5173:5173"
+    networks:
+      - internal
+
+  simrs-a-web:
+    build:
+      context: apps/simrs-a-web
+    ports:
+      - "5174:5174"
+    networks:
+      - internal
+
+  verifier-web:
+    profiles: ["later-gates"]
+    build:
+      context: apps/verifier-web
+    ports:
+      - "5175:5175"
+    networks:
+      - internal
+
+  simrs-b-demo:
+    profiles: ["simrs-b"]
+    build:
+      context: apps/simrs-b-demo
+    ports:
+      - "5176:5176"
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  rabbitmq-data:

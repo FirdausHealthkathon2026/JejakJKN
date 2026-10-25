@@ -1,0 +1,11 @@
+alembic==1.15.2
+asyncpg==0.30.0
+cryptography==46.0.5
+fastapi==0.115.12
+httpx==0.28.1
+PyJWT==2.10.1
+pydantic-settings==2.8.1
+redis==5.2.1
+SQLAlchemy==2.0.41
+uvicorn[standard]==0.34.2
+

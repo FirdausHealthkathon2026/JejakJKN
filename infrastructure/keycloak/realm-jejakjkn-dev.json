@@ -1,0 +1,178 @@
+{
+  "realm": "jejakjkn-dev",
+  "enabled": true,
+  "displayName": "JejakJKN Synthetic Development",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": false,
+  "roles": {
+    "realm": [
+      {"name": "patient"},
+      {"name": "simrs_scanner"},
+      {"name": "simrs_clinical_sender"},
+      {"name": "simrs_pharmacy_sender"},
+      {"name": "verifier"},
+      {"name": "review_supervisor"},
+      {"name": "platform_admin"},
+      {"name": "internal_service"}
+    ]
+  },
+  "clientScopes": [
+    {
+      "name": "roles",
+      "protocol": "openid-connect",
+      "protocolMappers": [{
+        "name": "realm roles",
+        "protocol": "openid-connect",
+        "protocolMapper": "oidc-usermodel-realm-role-mapper",
+        "config": {
+          "claim.name": "realm_access.roles",
+          "jsonType.label": "String",
+          "multivalued": "true",
+          "access.token.claim": "true",
+          "id.token.claim": "true"
+        }
+      }]
+    },
+    {
+      "name": "jejakjkn-audience",
+      "protocol": "openid-connect",
+      "protocolMappers": [{
+        "name": "jejakjkn-api-audience",
+        "protocol": "openid-connect",
+        "protocolMapper": "oidc-audience-mapper",
+        "config": {"included.custom.audience": "jejakjkn-api", "access.token.claim": "true"}
+      }]
+    },
+    {
+      "name": "patient-context",
+      "protocol": "openid-connect",
+      "protocolMappers": [{
+        "name": "patient-id",
+        "protocol": "openid-connect",
+        "protocolMapper": "oidc-usermodel-attribute-mapper",
+        "config": {"user.attribute": "patient_id", "claim.name": "patient_id", "jsonType.label": "String", "access.token.claim": "true"}
+      }]
+    },
+    {"name": "encounter:checkin", "protocol": "openid-connect"},
+    {"name": "encounter:checkout", "protocol": "openid-connect"},
+    {"name": "encounter:exception", "protocol": "openid-connect"}
+  ],
+  "clients": [
+    {
+      "clientId": "patient-web",
+      "name": "Patient Simulator",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "attributes": {"pkce.code.challenge.method": "S256"},
+      "defaultClientScopes": ["profile", "roles", "web-origins", "jejakjkn-audience", "patient-context"]
+    },
+    {
+      "clientId": "simrs-a-adapter",
+      "name": "SIMRS A Adapter",
+      "publicClient": false,
+      "secret": "${SIMRS_A_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": ["roles", "jejakjkn-audience", "encounter:checkin", "encounter:checkout", "encounter:exception"],
+      "protocolMappers": [
+        {"name": "organization-id", "protocol": "openid-connect", "protocolMapper": "oidc-hardcoded-claim-mapper", "config": {"claim.name": "org_id", "claim.value": "00000000-0000-4000-8000-000000000001", "jsonType.label": "String", "access.token.claim": "true"}},
+        {"name": "organization-type", "protocol": "openid-connect", "protocolMapper": "oidc-hardcoded-claim-mapper", "config": {"claim.name": "org_type", "claim.value": "FASKES", "jsonType.label": "String", "access.token.claim": "true"}}
+      ]
+    },
+    {
+      "clientId": "simrs-b-adapter",
+      "name": "SIMRS B Adapter",
+      "publicClient": false,
+      "secret": "${SIMRS_B_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": ["roles", "jejakjkn-audience", "encounter:checkin", "encounter:checkout", "encounter:exception"],
+      "protocolMappers": [
+        {"name": "organization-id", "protocol": "openid-connect", "protocolMapper": "oidc-hardcoded-claim-mapper", "config": {"claim.name": "org_id", "claim.value": "00000000-0000-4000-8000-000000000002", "jsonType.label": "String", "access.token.claim": "true"}},
+        {"name": "organization-type", "protocol": "openid-connect", "protocolMapper": "oidc-hardcoded-claim-mapper", "config": {"claim.name": "org_type", "claim.value": "FASKES", "jsonType.label": "String", "access.token.claim": "true"}}
+      ]
+    },
+    {
+      "clientId": "verifier-web",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "redirectUris": ["http://localhost:5175/*"],
+      "webOrigins": ["http://localhost:5175"],
+      "attributes": {"pkce.code.challenge.method": "S256"},
+      "defaultClientScopes": ["profile", "roles", "web-origins", "jejakjkn-audience"]
+    },
+    {
+      "clientId": "test-patient-client",
+      "name": "Synthetic Integration Test Patient",
+      "publicClient": false,
+      "secret": "${TEST_PATIENT_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": ["roles", "jejakjkn-audience"],
+      "protocolMappers": [{
+        "name": "patient-id",
+        "protocol": "openid-connect",
+        "protocolMapper": "oidc-hardcoded-claim-mapper",
+        "config": {"claim.name": "patient_id", "claim.value": "10000000-0000-4000-8000-000000000001", "jsonType.label": "String", "access.token.claim": "true"}
+      }]
+    },
+    {
+      "clientId": "test-patient-2-client",
+      "name": "Synthetic Integration Test Patient 2",
+      "publicClient": false,
+      "secret": "${TEST_PATIENT_2_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": ["roles", "jejakjkn-audience"],
+      "protocolMappers": [{
+        "name": "patient-id",
+        "protocol": "openid-connect",
+        "protocolMapper": "oidc-hardcoded-claim-mapper",
+        "config": {"claim.name": "patient_id", "claim.value": "10000000-0000-4000-8000-000000000002", "jsonType.label": "String", "access.token.claim": "true"}
+      }]
+    }
+  ],
+  "users": [
+    {
+      "username": "patient01",
+      "enabled": true,
+      "firstName": "Pasien",
+      "lastName": "Sintetis 01",
+      "attributes": {"patient_id": ["10000000-0000-4000-8000-000000000001"]},
+      "realmRoles": ["patient"],
+      "credentials": [{"type": "password", "value": "synthetic-patient-01", "temporary": false}]
+    },
+    {
+      "username": "service-account-simrs-a-adapter",
+      "enabled": true,
+      "serviceAccountClientId": "simrs-a-adapter",
+      "realmRoles": ["simrs_scanner", "simrs_clinical_sender", "simrs_pharmacy_sender"]
+    },
+    {
+      "username": "service-account-simrs-b-adapter",
+      "enabled": true,
+      "serviceAccountClientId": "simrs-b-adapter",
+      "realmRoles": ["simrs_scanner", "simrs_clinical_sender", "simrs_pharmacy_sender"]
+    },
+    {
+      "username": "service-account-test-patient-client",
+      "enabled": true,
+      "serviceAccountClientId": "test-patient-client",
+      "realmRoles": ["patient"]
+    },
+    {
+      "username": "service-account-test-patient-2-client",
+      "enabled": true,
+      "serviceAccountClientId": "test-patient-2-client",
+      "realmRoles": ["patient"]
+    }
+  ]
+}
