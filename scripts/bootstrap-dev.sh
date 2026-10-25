@@ -46,6 +46,8 @@ if [[ ! -f "$env_file" ]]; then
     -e "s/TEST_PATIENT_CLIENT_SECRET=change-me-local-only/TEST_PATIENT_CLIENT_SECRET=$test_patient_secret/" \
     -e "s/TEST_PATIENT_2_CLIENT_SECRET=change-me-local-only/TEST_PATIENT_2_CLIENT_SECRET=$test_patient_2_secret/" \
     -e "s#ENCOUNTER_DATABASE_URL=postgresql+asyncpg://encounter_app:change-me-local-only@postgres:5432/encounter_db#ENCOUNTER_DATABASE_URL=postgresql+asyncpg://encounter_app:$encounter_db_password@postgres:5432/encounter_db#" \
+    -e "s#EVIDENCE_DATABASE_URL=postgresql+asyncpg://evidence_app:change-me-local-only@postgres:5432/evidence_db#EVIDENCE_DATABASE_URL=postgresql+asyncpg://evidence_app:$evidence_db_password@postgres:5432/evidence_db#" \
+    -e "s#SIMRS_A_DATABASE_URL=postgresql+asyncpg://simrs_a_app:change-me-local-only@postgres:5432/simrs_a_db#SIMRS_A_DATABASE_URL=postgresql+asyncpg://simrs_a_app:$simrs_a_db_password@postgres:5432/simrs_a_db#" \
     -e "s/PARTICIPANT_LOOKUP_HMAC_KEY=replace-with-64-hex-characters/PARTICIPANT_LOOKUP_HMAC_KEY=$participant_key/" \
     -e "s/FIELD_ENCRYPTION_MASTER_KEY=replace-with-64-hex-characters/FIELD_ENCRYPTION_MASTER_KEY=$field_key/" \
     "$env_file"

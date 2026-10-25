@@ -1,4 +1,5 @@
 alembic==1.15.2
+aio-pika==9.5.5
 asyncpg==0.30.0
 cryptography==46.0.5
 fastapi==0.115.12

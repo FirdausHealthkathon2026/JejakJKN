@@ -56,7 +56,11 @@
     },
     {"name": "encounter:checkin", "protocol": "openid-connect"},
     {"name": "encounter:checkout", "protocol": "openid-connect"},
-    {"name": "encounter:exception", "protocol": "openid-connect"}
+    {"name": "encounter:exception", "protocol": "openid-connect"},
+    {"name": "evidence:write", "protocol": "openid-connect"},
+    {"name": "evidence:correct", "protocol": "openid-connect"},
+    {"name": "evidence:cancel", "protocol": "openid-connect"},
+    {"name": "evidence:readstatus", "protocol": "openid-connect"}
   ],
   "clients": [
     {
@@ -78,7 +82,7 @@
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "defaultClientScopes": ["roles", "jejakjkn-audience", "encounter:checkin", "encounter:checkout", "encounter:exception"],
+      "defaultClientScopes": ["roles", "jejakjkn-audience", "encounter:checkin", "encounter:checkout", "encounter:exception", "evidence:write", "evidence:correct", "evidence:cancel", "evidence:readstatus"],
       "protocolMappers": [
         {"name": "organization-id", "protocol": "openid-connect", "protocolMapper": "oidc-hardcoded-claim-mapper", "config": {"claim.name": "org_id", "claim.value": "00000000-0000-4000-8000-000000000001", "jsonType.label": "String", "access.token.claim": "true"}},
         {"name": "organization-type", "protocol": "openid-connect", "protocolMapper": "oidc-hardcoded-claim-mapper", "config": {"claim.name": "org_type", "claim.value": "FASKES", "jsonType.label": "String", "access.token.claim": "true"}}
@@ -92,7 +96,7 @@
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "defaultClientScopes": ["roles", "jejakjkn-audience", "encounter:checkin", "encounter:checkout", "encounter:exception"],
+      "defaultClientScopes": ["roles", "jejakjkn-audience", "encounter:checkin", "encounter:checkout", "encounter:exception", "evidence:write", "evidence:correct", "evidence:cancel", "evidence:readstatus"],
       "protocolMappers": [
         {"name": "organization-id", "protocol": "openid-connect", "protocolMapper": "oidc-hardcoded-claim-mapper", "config": {"claim.name": "org_id", "claim.value": "00000000-0000-4000-8000-000000000002", "jsonType.label": "String", "access.token.claim": "true"}},
         {"name": "organization-type", "protocol": "openid-connect", "protocolMapper": "oidc-hardcoded-claim-mapper", "config": {"claim.name": "org_type", "claim.value": "FASKES", "jsonType.label": "String", "access.token.claim": "true"}}
