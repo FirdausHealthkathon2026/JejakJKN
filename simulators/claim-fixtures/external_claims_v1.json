@@ -1,0 +1,5 @@
+{
+  "source": "VERIFIER-DEMO-SYSTEM",
+  "description": "External claim fixtures selectable by verifier for inspection (never submitted/created as BPJS claims inside JejakJKN).",
+  "claims": []
+}
