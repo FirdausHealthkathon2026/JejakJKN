@@ -133,7 +133,8 @@ class EncounterApplication:
                 idempotency_key=idempotency_key,
                 response_payload=response,
             ))
-            self.session.add(_outbox(event_type, encounter, principal.subject, response))
+            event_data = response | {"patient_id": str(patient_id), "presence_status": str(encounter.presence_status)}
+            self.session.add(_outbox(event_type, encounter, principal.subject, event_data))
             await self.session.commit()
         except IntegrityError as exc:
             await self.session.rollback()
@@ -184,7 +185,8 @@ class EncounterApplication:
             evidence_ref=request.evidence_ref, notes=request.notes,
         ))
         response = {"encounter_id": str(encounter.id), "encounter_status": str(encounter.status), "presence_status": "EXCEPTION_DOCUMENTED"}
-        self.session.add(_outbox("encounter.exception_recorded.v1", encounter, principal.subject, response))
+        event_data = response | {"patient_id": str(encounter.patient_id), "checked_out_at": encounter.ended_at.isoformat() if encounter.ended_at else None}
+        self.session.add(_outbox("encounter.exception_recorded.v1", encounter, principal.subject, event_data))
         await self.session.commit()
         return response
 

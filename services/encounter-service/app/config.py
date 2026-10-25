@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     app_env: str = "local"
     encounter_database_url: str = "postgresql+asyncpg://encounter_app:dev_encounter_pass@postgres:5432/encounter_db"
     redis_url: str = "redis://redis:6379/0"
+    rabbitmq_url: str = "amqp://guest:guest@rabbitmq:5672/"
     keycloak_issuer_url: str = "http://localhost:8081/realms/jejakjkn-dev"
     keycloak_jwks_url: str = "http://keycloak:8080/realms/jejakjkn-dev/protocol/openid-connect/certs"
     jwt_audience: str = "jejakjkn-api"
