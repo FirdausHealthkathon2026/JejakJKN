@@ -64,14 +64,17 @@ def _path_parameters(route: str) -> set[str]:
 
 def _parameter_name(parameter: dict) -> str | None:
     if "$ref" in parameter:
-        return parameter["$ref"].rsplit("/", 1)[-1].replace("EncounterId", "encounter_id")
+        return parameter["$ref"].rsplit("/", 1)[-1].replace("EncounterId", "encounter_id").replace("SnapshotId", "snapshot_id")
     return parameter.get("name")
 
 
-def validate_provider(static_operations: set[tuple[str, str]]) -> None:
+def validate_provider(service: str, static_operations: set[tuple[str, str]]) -> None:
     os.environ.setdefault("PARTICIPANT_LOOKUP_HMAC_KEY", "11" * 32)
     os.environ.setdefault("FIELD_ENCRYPTION_MASTER_KEY", "22" * 32)
-    sys.path[:0] = [str(ROOT / "services/encounter-service"), str(ROOT / "libs/python-auth"), str(ROOT / "libs/canonical-data")]
+    for name in list(sys.modules):
+        if name == "app" or name.startswith("app."):
+            del sys.modules[name]
+    sys.path[0:0] = [str(ROOT / f"services/{service}"), str(ROOT / "libs/python-auth"), str(ROOT / "libs/canonical-data")]
     from app.main import app
 
     generated = app.openapi()
@@ -82,20 +85,23 @@ def validate_provider(static_operations: set[tuple[str, str]]) -> None:
         for method in item
         if method in HTTP_METHODS
     }
-    assert provider == static_operations, f"encounter contract/provider mismatch: static-only={static_operations-provider}, provider-only={provider-static_operations}"
+    assert provider == static_operations, f"{service} contract/provider mismatch: static-only={static_operations-provider}, provider-only={provider-static_operations}"
+    del sys.path[:3]
 
 
 def main() -> None:
-    encounter_operations: set[tuple[str, str]] | None = None
+    provider_contracts: dict[str, set[tuple[str, str]]] = {}
     for path in sorted((ROOT / "contracts/openapi").glob("*.yaml")):
         operations = validate_openapi(path)
         if path.name == "encounter-v1.yaml":
-            encounter_operations = operations
+            provider_contracts["encounter-service"] = operations
+        elif path.name == "evidence-v1.yaml":
+            provider_contracts["evidence-service"] = operations
     for path in sorted((ROOT / "contracts/events/v1").glob("*.json")):
         Draft202012Validator.check_schema(json.loads(path.read_text()))
-    assert encounter_operations is not None
-    validate_provider(encounter_operations)
-    print("[contract] OpenAPI files, event schemas, and encounter provider routes are valid")
+    for service, operations in provider_contracts.items():
+        validate_provider(service, operations)
+    print("[contract] OpenAPI files, event schemas, and implemented provider routes are valid")
 
 
 if __name__ == "__main__":

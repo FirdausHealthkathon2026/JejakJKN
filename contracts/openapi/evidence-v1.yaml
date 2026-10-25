@@ -2,73 +2,217 @@ openapi: 3.1.0
 info:
   title: JejakJKN Evidence & Confirmation Service API
   version: 1.0.0
-x-implementation-status: planned-gate-2
+x-implementation-status: implemented-gate-2-3
+servers:
+  - url: http://localhost:18080
+security:
+  - bearerAuth: []
 paths:
-  /api/v1/patient/encounters/{id}/checkout-summary:
+  /api/v1/integrations/encounters/{encounter_id}/events:
+    post:
+      operationId: ingestSimrsClinicalEvent
+      summary: Append the first immutable version of a SIMRS clinical record
+      parameters: [{$ref: '#/components/parameters/EncounterId'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ClinicalEventRequest'}}}
+      responses:
+        '201': {description: Evidence version persisted, content: {application/json: {schema: {$ref: '#/components/schemas/EvidenceWriteResponse'}}}}
+        '409': {$ref: '#/components/responses/Problem'}
+  /api/v1/integrations/encounters/{encounter_id}/corrections:
+    post:
+      operationId: ingestSimrsCorrection
+      summary: Append a correction version without overwriting history
+      parameters: [{$ref: '#/components/parameters/EncounterId'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CorrectionRequest'}}}
+      responses:
+        '201': {description: Correction version persisted, content: {application/json: {schema: {$ref: '#/components/schemas/EvidenceWriteResponse'}}}}
+  /api/v1/integrations/encounters/{encounter_id}/cancellations:
+    post:
+      operationId: ingestSimrsCancellation
+      summary: Append a cancellation version without deleting history
+      parameters: [{$ref: '#/components/parameters/EncounterId'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CancellationRequest'}}}
+      responses:
+        '200': {description: Cancellation version persisted, content: {application/json: {schema: {$ref: '#/components/schemas/EvidenceWriteResponse'}}}}
+  /api/v1/integrations/encounters/{encounter_id}/sync-complete:
+    post:
+      operationId: markEncounterSyncComplete
+      summary: Evaluate the explicit end-of-visit source sequence watermark
+      parameters: [{$ref: '#/components/parameters/EncounterId'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SyncCompleteRequest'}}}
+      responses:
+        '200': {description: Watermark evaluated; gaps remain INCOMPLETE_SYNC, content: {application/json: {schema: {$ref: '#/components/schemas/SyncStatusResponse'}}}}
+  /api/v1/integrations/encounters/{encounter_id}/ingestion-status:
+    get:
+      operationId: getEncounterIngestionStatus
+      parameters: [{$ref: '#/components/parameters/EncounterId'}]
+      responses:
+        '200': {description: Current evidence and watermark status, content: {application/json: {schema: {$ref: '#/components/schemas/SyncStatusResponse'}}}}
+  /api/v1/patient/encounters/{encounter_id}/checkout-summary:
     get:
       operationId: getPatientCheckoutSummary
-      summary: Get frozen checkout summary (available only after valid CHECK_OUT)
+      summary: Get the latest READY frozen summary owned by the patient
+      parameters: [{$ref: '#/components/parameters/EncounterId'}]
       responses:
-        "200":
-          description: Checkout summary snapshot
-        "409":
-          description: Encounter not checked out or snapshot not ready
+        '200': {description: Frozen checkout summary, content: {application/json: {schema: {$ref: '#/components/schemas/CheckoutSummary'}}}}
+        '409': {$ref: '#/components/responses/Problem'}
   /api/v1/patient/checkout-summaries/{snapshot_id}/responses:
     post:
       operationId: submitPatientConfirmation
-      summary: Submit itemized patient confirmation or dispute on frozen snapshot
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/PatientResponseRequest'}}}
       responses:
-        "201":
-          description: Confirmation recorded
+        '201': {description: Patient response recorded, content: {application/json: {schema: {$ref: '#/components/schemas/PatientResponse'}}}}
   /api/v1/patient/checkout-summaries/{snapshot_id}/response:
     get:
       operationId: getPatientConfirmation
+      parameters: [{$ref: '#/components/parameters/SnapshotId'}]
       responses:
-        "200":
-          description: Recorded patient response
-  /api/v1/integrations/encounters/{id}/events:
-    post:
-      operationId: ingestSimrsClinicalEvent
-      summary: Ingest diagnosis, procedure, medication dispense, or stage completion from SIMRS adapter
-      responses:
-        "201":
-          description: Evidence version persisted
-  /api/v1/integrations/encounters/{id}/corrections:
-    post:
-      operationId: ingestSimrsCorrection
-      summary: Append new immutable version for source record
-      responses:
-        "201":
-          description: Evidence correction version persisted
-  /api/v1/integrations/encounters/{id}/cancellations:
-    post:
-      operationId: ingestSimrsCancellation
-      summary: Append cancellation version for source record
-      responses:
-        "200":
-          description: Evidence cancelled
-  /api/v1/integrations/encounters/{id}/sync-complete:
-    post:
-      operationId: markEncounterSyncComplete
-      summary: Record SIMRS end-of-visit sequence watermark
-      responses:
-        "200":
-          description: Sync watermark evaluated
-  /api/v1/integrations/encounters/{id}/ingestion-status:
-    get:
-      operationId: getEncounterIngestionStatus
-      responses:
-        "200":
-          description: Delivery and revision status
-  /internal/v1/encounters/{id}/evidence-snapshots:
-    post:
-      operationId: pinVerificationEvidenceSnapshot
-      responses:
-        "201":
-          description: Immutable evidence snapshot pinned for verification run
-  /internal/v1/evidence-snapshots/{id}:
-    get:
-      operationId: getVerificationEvidenceSnapshot
-      responses:
-        "200":
-          description: Pinned evidence snapshot payload
+        '200': {description: Recorded patient response, content: {application/json: {schema: {$ref: '#/components/schemas/PatientResponse'}}}}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    EncounterId: {name: encounter_id, in: path, required: true, schema: {type: string, format: uuid}}
+    SnapshotId: {name: snapshot_id, in: path, required: true, schema: {type: string, format: uuid}}
+  responses:
+    Problem: {description: RFC 9457 problem details, content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+  schemas:
+    Actor:
+      type: object
+      required: [external_id, role]
+      properties: {external_id: {type: string, maxLength: 128}, role: {type: string, maxLength: 64}}
+    EvidenceContent:
+      type: object
+      required: [code_system, code, display]
+      properties:
+        code_system: {type: string, maxLength: 64}
+        code: {type: string, maxLength: 64}
+        display: {type: string, maxLength: 255}
+        quantity: {type: [number, 'null'], minimum: 0}
+        unit: {type: [string, 'null'], maxLength: 32}
+    ClinicalEventRequest:
+      type: object
+      required: [source_event_id, source_system, source_sequence, external_record_id, event_type, occurred_at, actor, content]
+      properties:
+        source_event_id: {type: string, maxLength: 128}
+        source_system: {type: string, maxLength: 64}
+        source_sequence: {type: integer, minimum: 1}
+        external_record_id: {type: string, maxLength: 128}
+        event_type: {type: string, enum: [DIAGNOSIS, PROCEDURE, MEDICATION_PRESCRIBED, MEDICATION_DISPENSED, STAGE_COMPLETION, DOCUMENT_FINGERPRINT]}
+        record_version: {type: integer, const: 1, default: 1}
+        occurred_at: {type: string, format: date-time}
+        actor: {$ref: '#/components/schemas/Actor'}
+        content: {$ref: '#/components/schemas/EvidenceContent'}
+        stage_completion: {type: [string, 'null'], enum: [STARTED, STAFF_COMPLETED, null]}
+    CorrectionRequest:
+      type: object
+      required: [source_event_id, source_system, source_sequence, external_record_id, record_version, occurred_at, source_updated_at, change_reason, actor, content]
+      properties:
+        source_event_id: {type: string, maxLength: 128}
+        source_system: {type: string, maxLength: 64}
+        source_sequence: {type: integer, minimum: 1}
+        external_record_id: {type: string, maxLength: 128}
+        record_version: {type: integer, minimum: 2}
+        occurred_at: {type: string, format: date-time}
+        source_updated_at: {type: string, format: date-time}
+        change_reason: {type: string, maxLength: 500}
+        actor: {$ref: '#/components/schemas/Actor'}
+        content: {$ref: '#/components/schemas/EvidenceContent'}
+        stage_completion: {type: [string, 'null'], enum: [STARTED, STAFF_COMPLETED, null]}
+    CancellationRequest:
+      type: object
+      required: [source_event_id, source_system, source_sequence, external_record_id, record_version, source_updated_at, cancel_reason, actor]
+      properties:
+        source_event_id: {type: string, maxLength: 128}
+        source_system: {type: string, maxLength: 64}
+        source_sequence: {type: integer, minimum: 1}
+        external_record_id: {type: string, maxLength: 128}
+        record_version: {type: integer, minimum: 2}
+        source_updated_at: {type: string, format: date-time}
+        cancel_reason: {type: string, maxLength: 500}
+        actor: {$ref: '#/components/schemas/Actor'}
+    SyncCompleteRequest:
+      type: object
+      required: [source_system, last_source_sequence, marked_complete_at]
+      properties: {source_system: {type: string}, last_source_sequence: {type: integer, minimum: 0}, marked_complete_at: {type: string, format: date-time}}
+    EvidenceWriteResponse:
+      type: object
+      required: [evidence_id, evidence_version_id, record_version, encounter_evidence_revision, status, mapping_status]
+      properties:
+        evidence_id: {type: [string, 'null'], format: uuid}
+        evidence_version_id: {type: [string, 'null'], format: uuid}
+        record_version: {type: integer}
+        encounter_evidence_revision: {type: integer}
+        status: {type: string}
+        mapping_status: {type: [string, 'null']}
+    SyncStatusResponse:
+      type: object
+      required: [encounter_id, sync_status, current_revision, last_acked_source_sequence, expected_final_sequence, snapshot_id]
+      properties:
+        encounter_id: {type: string, format: uuid}
+        sync_status: {type: string, enum: [RECEIVING, QUARANTINE_PENDING, INCOMPLETE_SYNC, SYNC_COMPLETE]}
+        current_revision: {type: integer}
+        last_acked_source_sequence: {type: integer}
+        expected_final_sequence: {type: [integer, 'null']}
+        snapshot_id: {type: [string, 'null'], format: uuid}
+    SummaryItem:
+      type: object
+      required: [evidence_id, evidence_version_id, version, kind, description, quantity, unit, recorded_status]
+      properties:
+        evidence_id: {type: string, format: uuid}
+        evidence_version_id: {type: string, format: uuid}
+        version: {type: integer}
+        kind: {type: string, enum: [DIAGNOSIS, PROCEDURE, MEDICATION_DISPENSE]}
+        description: {type: string}
+        quantity: {type: [number, 'null']}
+        unit: {type: [string, 'null']}
+        recorded_status: {type: string}
+    CheckoutSummary:
+      type: object
+      required: [snapshot_id, encounter_id, status, evidence_revision, presented_at, items]
+      properties:
+        snapshot_id: {type: string, format: uuid}
+        encounter_id: {type: string, format: uuid}
+        status: {type: string, const: READY}
+        evidence_revision: {type: integer}
+        presented_at: {type: [string, 'null'], format: date-time}
+        items: {type: array, items: {$ref: '#/components/schemas/SummaryItem'}}
+    ItemResponse:
+      type: object
+      required: [evidence_id, response]
+      properties:
+        evidence_id: {type: string, format: uuid}
+        response: {type: string, enum: [CONFIRMED, DISPUTED]}
+        reason: {type: [string, 'null'], enum: [SERVICE_NOT_RECEIVED, MEDICATION_NOT_RECEIVED, QUANTITY_DIFFERENT, OTHER, null]}
+        note: {type: [string, 'null'], maxLength: 500}
+    PatientResponseRequest:
+      type: object
+      required: [overall_response]
+      properties:
+        overall_response: {type: string, enum: [CONFIRMED, PARTIALLY_DISPUTED, DISPUTED, DECLINED]}
+        items: {type: array, items: {$ref: '#/components/schemas/ItemResponse'}, default: []}
+    PatientResponse:
+      type: object
+      required: [response_id, snapshot_id, overall_response, submitted_at, snapshot_status]
+      properties:
+        response_id: {type: string, format: uuid}
+        snapshot_id: {type: string, format: uuid}
+        overall_response: {type: string}
+        submitted_at: {type: string, format: date-time}
+        snapshot_status: {type: string}
+    Problem:
+      type: object
+      required: [type, title, status, detail, error_code]
+      properties: {type: {type: string, format: uri}, title: {type: string}, status: {type: integer}, detail: {type: string}, error_code: {type: string}}
