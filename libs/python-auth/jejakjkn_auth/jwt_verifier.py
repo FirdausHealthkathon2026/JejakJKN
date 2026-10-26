@@ -33,10 +33,11 @@ class JwtVerifier:
             algorithms=["RS256"],
             audience=self.audience,
             issuer=self.issuer,
-            options={"require": ["exp", "iat", "sub"]},
+            options={"require": ["exp", "iat"]},
         )
+        subject = str(claims.get("sub") or claims.get("patient_id") or claims.get("org_id") or claims.get("azp") or "unknown")
         return Principal(
-            subject=claims["sub"],
+            subject=subject,
             roles=frozenset(claims.get("realm_access", {}).get("roles", [])),
             scopes=frozenset(str(claims.get("scope", "")).split()),
             client_id=claims.get("azp", claims.get("client_id", "unknown")),

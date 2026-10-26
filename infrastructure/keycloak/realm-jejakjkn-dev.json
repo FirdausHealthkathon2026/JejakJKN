@@ -73,7 +73,41 @@
     {"name": "verification:read", "protocol": "openid-connect"},
     {"name": "verification:recheck", "protocol": "openid-connect"},
     {"name": "review:read", "protocol": "openid-connect"},
-    {"name": "review:decide", "protocol": "openid-connect"}
+    {"name": "review:decide", "protocol": "openid-connect"},
+    {
+      "name": "basic",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "sub",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "config": {
+            "introspection.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "web-origins",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "allowed web origins",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-allowed-origins-mapper",
+          "config": {}
+        }
+      ]
+    }
+  ],
+  "defaultDefaultClientScopes": [
+    "basic"
   ],
   "clients": [
     {
@@ -81,11 +115,11 @@
       "name": "Patient Simulator",
       "publicClient": true,
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": false,
+      "directAccessGrantsEnabled": true,
       "redirectUris": ["http://localhost:5173/*"],
       "webOrigins": ["http://localhost:5173"],
       "attributes": {"pkce.code.challenge.method": "S256"},
-      "defaultClientScopes": ["profile", "roles", "web-origins", "jejakjkn-audience", "patient-context"]
+      "defaultClientScopes": ["basic", "roles", "web-origins", "jejakjkn-audience", "patient-context"]
     },
     {
       "clientId": "simrs-a-adapter",
@@ -119,10 +153,11 @@
       "clientId": "verifier-web",
       "publicClient": true,
       "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
       "redirectUris": ["http://localhost:5175/*"],
       "webOrigins": ["http://localhost:5175"],
       "attributes": {"pkce.code.challenge.method": "S256"},
-      "defaultClientScopes": ["profile", "roles", "web-origins", "jejakjkn-audience", "organization-context", "verification:create", "verification:read", "verification:recheck", "review:read", "review:decide"]
+      "defaultClientScopes": ["basic", "roles", "web-origins", "jejakjkn-audience", "organization-context", "verification:create", "verification:read", "verification:recheck", "review:read", "review:decide"]
     },
     {
       "clientId": "verification-service",
@@ -197,6 +232,8 @@
       "enabled": true,
       "firstName": "Pasien",
       "lastName": "Sintetis 01",
+      "email": "patient01@bpjs-kesehatan.go.id",
+      "emailVerified": true,
       "attributes": {"patient_id": ["10000000-0000-4000-8000-000000000001"]},
       "realmRoles": ["patient"],
       "credentials": [{"type": "password", "value": "synthetic-patient-01", "temporary": false}]
@@ -206,6 +243,8 @@
       "enabled": true,
       "firstName": "Verifier",
       "lastName": "Sintetis 01",
+      "email": "verifier01@bpjs-kesehatan.go.id",
+      "emailVerified": true,
       "attributes": {"org_id": ["20000000-0000-4000-8000-000000000001"], "org_type": ["VERIFIER"]},
       "realmRoles": ["verifier"],
       "credentials": [{"type": "password", "value": "synthetic-verifier-01", "temporary": false}]
