@@ -1,5 +1,5 @@
 import {FormEvent, useState} from "react";
-import {Assessment, Candidate, Finding, getAssessment, getCandidates, getFindings, recheck, submitVerification} from "./api/client";
+import {Assessment, Candidate, Finding, ReviewCase, getAssessment, getCandidates, getFindings, getReviewCase, getReviewCases, recordDecision, recheck, submitVerification} from "./api/client";
 
 type Props = {accessToken: () => string; logout: () => void};
 export default function App({accessToken, logout}: Props) {
@@ -11,6 +11,9 @@ export default function App({accessToken, logout}: Props) {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [error, setError] = useState("");
+  const [reviewCases, setReviewCases] = useState<ReviewCase[]>([]);
+  const [selectedCase, setSelectedCase] = useState<ReviewCase | null>(null);
+  const [reason, setReason] = useState("Reviewed against the available evidence package.");
   const refresh = async (id = verificationId) => {
     if (!id) return;
     try { setAssessment(await getAssessment(accessToken(), id)); setCandidates(await getCandidates(accessToken(), id)); setFindings(await getFindings(accessToken(), id)); }
@@ -41,5 +44,13 @@ export default function App({accessToken, logout}: Props) {
     </dl><p>Status: {assessment.status}; freshness: {assessment.data_freshness}; keputusan fraud: {String(assessment.final_fraud_decision)}</p></section>}
     {candidates.length > 0 && <section><h2>Semua kandidat</h2><ul>{candidates.map(row => <li key={row.encounter_id}>{row.encounter_id}: {row.match_state} ({row.reasons.join(", ") || "semua item cocok"})</li>)}</ul></section>}
     <section><h2>Temuan aturan</h2>{findings.length ? <ul>{findings.map((row, index) => <li key={`${row.rule_id}-${index}`}><strong>{row.rule_id}</strong> [{row.severity}] {row.finding_code} — {row.limitations}</li>)}</ul> : <p>Belum ada temuan.</p>}</section>
+    <section><h2>Antrian telaah manusia</h2><button onClick={async () => { try { setReviewCases(await getReviewCases(accessToken())); } catch (value) { setError((value as Error).message); } }}>Muat antrian</button>
+      <ul>{reviewCases.map(row => <li key={row.id}><button onClick={async () => setSelectedCase(await getReviewCase(accessToken(), row.id))}>{row.claim_source}/{row.claim_id}</button> — {row.state}{row.is_stale ? " (bukti berubah)" : ""}</li>)}</ul>
+      {selectedCase && <article><h3>{selectedCase.claim_id}</h3><p>Status: {selectedCase.state}. Keputusan tetap dibuat reviewer manusia.</p>
+        {selectedCase.narrative?.summary?.map(line => <p key={line}>{line}</p>)}
+        <label>Alasan <textarea value={reason} onChange={event => setReason(event.target.value)} minLength={10}/></label>
+        <div>{["NO_ACTION", "REQUEST_CLARIFICATION", "ESCALATE", "CLOSE_REVIEW"].map(value => <button key={value} onClick={async () => { await recordDecision(accessToken(), selectedCase.id, value, reason); setSelectedCase(await getReviewCase(accessToken(), selectedCase.id)); }}>{value}</button>)}</div>
+      </article>}
+    </section>
   </main>;
 }

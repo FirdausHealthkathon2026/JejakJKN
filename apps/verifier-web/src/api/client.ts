@@ -6,6 +6,7 @@ export type Assessment = {
 };
 export type Candidate = {encounter_id: string; match_state: string; identity_assurance: string; presence_status: string; patient_confirmation_status: string; reasons: string[]};
 export type Finding = {rule_id: string; severity: string; finding_code: string; claim_item_ref: string | null; limitations: string};
+export type ReviewCase = {id: string; claim_source: string; claim_id: string; state: string; is_stale: boolean; review_package?: Record<string, unknown>; narrative?: {summary?: string[]; findings?: string[]; questions?: string[]; limitations?: string[]}};
 
 const API = `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:18080"}/api/v1/verifications`;
 async function request<T>(path: string, token: string, init?: RequestInit): Promise<T> {
@@ -18,3 +19,13 @@ export const getAssessment = (token: string, id: string) => request<Assessment>(
 export const getCandidates = (token: string, id: string) => request<Candidate[]>(`/${id}/candidates`, token);
 export const getFindings = (token: string, id: string) => request<Finding[]>(`/${id}/findings`, token);
 export const recheck = (token: string, id: string) => request(`/${id}/re-evaluate`, token, {method: "POST", headers: {"Idempotency-Key": crypto.randomUUID()}, body: "{}"});
+
+const REVIEW_API = `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:18080"}/api/v1/review-cases`;
+async function reviewRequest<T>(path: string, token: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${REVIEW_API}${path}`, {...init, headers: {"Content-Type": "application/json", Authorization: `Bearer ${token}`, ...init?.headers}});
+  if (!response.ok) { const problem = await response.json(); throw new Error(problem.detail ?? "Request failed"); }
+  return response.json() as Promise<T>;
+}
+export const getReviewCases = (token: string) => reviewRequest<ReviewCase[]>("", token);
+export const getReviewCase = (token: string, id: string) => reviewRequest<ReviewCase>(`/${id}`, token, {headers: {"X-Access-Purpose": "claim-integrity-review"}});
+export const recordDecision = (token: string, id: string, decision: string, reason: string) => reviewRequest(`/${id}/decisions`, token, {method: "POST", headers: {"Idempotency-Key": crypto.randomUUID()}, body: JSON.stringify({decision, reason})});
