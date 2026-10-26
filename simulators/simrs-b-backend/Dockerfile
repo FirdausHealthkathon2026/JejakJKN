@@ -2,6 +2,7 @@ FROM python:3.12-slim
 WORKDIR /app
 COPY requirements/base.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
+COPY libs/python-observability/jejakjkn_observability /usr/local/lib/python3.12/site-packages/jejakjkn_observability
 COPY adapters/simrs-b/simrs_b_adapter /app/simrs_b_adapter
 COPY simulators/simrs-b-backend/ /app/
 EXPOSE 8102
