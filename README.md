@@ -32,12 +32,12 @@
 
 ```bash
 make bootstrap        # Initialize ignored local secrets and environment
-make up               # Start the Gate 0–3 Docker Compose stack
-make migrate          # Run Encounter, Evidence, and SIMRS-A migrations
+make up               # Start the Gate 0–5 Docker Compose stack
+make migrate          # Run Encounter, Evidence, Verification, and SIMRS-A migrations
 make seed             # Seed 3 organizations, 2 sources, and 20 synthetic patients
-make test-unit        # Run Gate 1–3 unit, contract, and redaction tests
+make test-unit        # Run Gate 1–5 unit, contract, and redaction tests
 make test-contract    # Validate OpenAPI 3.1 + JSON Schema event contracts
-make test-integration # Run live Gate 1–3 cross-service acceptance tests
+make test-integration # Run live Gate 1–5 database and outbox tests
 make test-concurrency # Run the live 100-concurrent QR scan test
 make test-security    # Run implemented RBAC and redaction tests
 make test-e2e         # Reserved for the later full three-interface flow
@@ -52,6 +52,8 @@ make reset-dev-data   # Wipe and re-seed local synthetic databases
 - **Gate 1:** Encounter Service QR issue/check-in/check-out/exception flow, Ed25519 tokens, Redis two-phase reservation, durable receipts/outbox, synthetic patient seed, Patient Web, SIMRS-A scanner, and QR concurrency/security tests.
 - **Gate 2:** SIMRS-A-owned clinical/pharmacy records, durable local outbox delivery, tenant-bound Evidence ingestion, immutable corrections/cancellations, sequence tracking/quarantine, and internal-only care stages.
 - **Gate 3:** explicit sync-complete watermark, frozen post-checkout summaries, itemized patient confirmation/dispute/decline, timeout state, and late-correction reconfirmation.
-- **Planned:** claim verification (Gate 4–5), human review (Gate 6), second adapter and production hardening (Gate 7).
+- **Gate 4:** verifier-owned request intake and history, all-candidate search with a ten-result safety cap, strong-identity-only auto-selection, immutable Evidence snapshots, four-dimensional assessments, and the Verifier Web simulator.
+- **Gate 5:** maximum bipartite/quantity-safe item reconciliation, deterministic `R001..R014` findings, claim–encounter/evidence history, ordered advisory-lock finalization, dependency-fingerprint reuse, duplicate signals, and event-driven stale assessment invalidation.
+- **Planned:** human review (Gate 6), second adapter and production hardening (Gate 7).
 
-Run `make bootstrap install up migrate seed`, then open Patient Web on `http://localhost:5173` and SIMRS-A scanner on `http://localhost:5174`. The public API defaults to `http://localhost:18080` and can be changed with `API_GATEWAY_PORT`. The synthetic browser account is `patient01` / `synthetic-patient-01`.
+Run `make bootstrap install up migrate seed`, then open Patient Web on `http://localhost:5173`, SIMRS-A scanner on `http://localhost:5174`, or Verifier Web on `http://localhost:5175`. The public API defaults to `http://localhost:18080` and can be changed with `API_GATEWAY_PORT`. Synthetic browser accounts are `patient01` / `synthetic-patient-01` and `verifier01` / `synthetic-verifier-01`.

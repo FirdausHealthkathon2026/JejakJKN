@@ -23,6 +23,8 @@
   "bindings": [
     {"source": "jejakjkn.domain.v1", "vhost": "/", "destination": "evidence.encounter-events.q", "destination_type": "queue", "routing_key": "encounter.*.v1", "arguments": {}},
     {"source": "jejakjkn.domain.v1", "vhost": "/", "destination": "verification.domain-events.q", "destination_type": "queue", "routing_key": "verification.requested.v1", "arguments": {}},
+    {"source": "jejakjkn.domain.v1", "vhost": "/", "destination": "verification.domain-events.q", "destination_type": "queue", "routing_key": "evidence.*.v1", "arguments": {}},
+    {"source": "jejakjkn.domain.v1", "vhost": "/", "destination": "verification.domain-events.q", "destination_type": "queue", "routing_key": "patient.confirmation_recorded.v1", "arguments": {}},
     {"source": "jejakjkn.domain.v1", "vhost": "/", "destination": "review.verification-events.q", "destination_type": "queue", "routing_key": "verification.*.v1", "arguments": {}},
     {"source": "jejakjkn.domain.v1", "vhost": "/", "destination": "narrative.verification-events.q", "destination_type": "queue", "routing_key": "verification.completed.v1", "arguments": {}},
     {"source": "jejakjkn.dlx.v1", "vhost": "/", "destination": "evidence.encounter-events.dlq", "destination_type": "queue", "routing_key": "encounter.*.v1", "arguments": {}},

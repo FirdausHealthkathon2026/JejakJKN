@@ -54,13 +54,24 @@
         "config": {"user.attribute": "patient_id", "claim.name": "patient_id", "jsonType.label": "String", "access.token.claim": "true"}
       }]
     },
+    {
+      "name": "organization-context",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {"name": "organization-id", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-attribute-mapper", "config": {"user.attribute": "org_id", "claim.name": "org_id", "jsonType.label": "String", "access.token.claim": "true"}},
+        {"name": "organization-type", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-attribute-mapper", "config": {"user.attribute": "org_type", "claim.name": "org_type", "jsonType.label": "String", "access.token.claim": "true"}}
+      ]
+    },
     {"name": "encounter:checkin", "protocol": "openid-connect"},
     {"name": "encounter:checkout", "protocol": "openid-connect"},
     {"name": "encounter:exception", "protocol": "openid-connect"},
     {"name": "evidence:write", "protocol": "openid-connect"},
     {"name": "evidence:correct", "protocol": "openid-connect"},
     {"name": "evidence:cancel", "protocol": "openid-connect"},
-    {"name": "evidence:readstatus", "protocol": "openid-connect"}
+    {"name": "evidence:readstatus", "protocol": "openid-connect"},
+    {"name": "verification:create", "protocol": "openid-connect"},
+    {"name": "verification:read", "protocol": "openid-connect"},
+    {"name": "verification:recheck", "protocol": "openid-connect"}
   ],
   "clients": [
     {
@@ -109,7 +120,31 @@
       "redirectUris": ["http://localhost:5175/*"],
       "webOrigins": ["http://localhost:5175"],
       "attributes": {"pkce.code.challenge.method": "S256"},
-      "defaultClientScopes": ["profile", "roles", "web-origins", "jejakjkn-audience"]
+      "defaultClientScopes": ["profile", "roles", "web-origins", "jejakjkn-audience", "organization-context", "verification:create", "verification:read", "verification:recheck"]
+    },
+    {
+      "clientId": "verification-service",
+      "name": "Verification Internal Service",
+      "publicClient": false,
+      "secret": "${VERIFICATION_SERVICE_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": ["roles", "jejakjkn-audience"]
+    },
+    {
+      "clientId": "test-verifier-client",
+      "name": "Synthetic Integration Test Verifier",
+      "publicClient": false,
+      "secret": "${TEST_VERIFIER_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": ["roles", "jejakjkn-audience", "verification:create", "verification:read", "verification:recheck"],
+      "protocolMappers": [
+        {"name": "organization-id", "protocol": "openid-connect", "protocolMapper": "oidc-hardcoded-claim-mapper", "config": {"claim.name": "org_id", "claim.value": "20000000-0000-4000-8000-000000000001", "jsonType.label": "String", "access.token.claim": "true"}},
+        {"name": "organization-type", "protocol": "openid-connect", "protocolMapper": "oidc-hardcoded-claim-mapper", "config": {"claim.name": "org_type", "claim.value": "VERIFIER", "jsonType.label": "String", "access.token.claim": "true"}}
+      ]
     },
     {
       "clientId": "test-patient-client",
@@ -153,6 +188,27 @@
       "attributes": {"patient_id": ["10000000-0000-4000-8000-000000000001"]},
       "realmRoles": ["patient"],
       "credentials": [{"type": "password", "value": "synthetic-patient-01", "temporary": false}]
+    },
+    {
+      "username": "verifier01",
+      "enabled": true,
+      "firstName": "Verifier",
+      "lastName": "Sintetis 01",
+      "attributes": {"org_id": ["20000000-0000-4000-8000-000000000001"], "org_type": ["VERIFIER"]},
+      "realmRoles": ["verifier"],
+      "credentials": [{"type": "password", "value": "synthetic-verifier-01", "temporary": false}]
+    },
+    {
+      "username": "service-account-verification-service",
+      "enabled": true,
+      "serviceAccountClientId": "verification-service",
+      "realmRoles": ["internal_service"]
+    },
+    {
+      "username": "service-account-test-verifier-client",
+      "enabled": true,
+      "serviceAccountClientId": "test-verifier-client",
+      "realmRoles": ["verifier"]
     },
     {
       "username": "service-account-simrs-a-adapter",

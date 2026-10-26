@@ -69,6 +69,8 @@ services:
       SIMRS_B_CLIENT_SECRET: ${SIMRS_B_CLIENT_SECRET}
       TEST_PATIENT_CLIENT_SECRET: ${TEST_PATIENT_CLIENT_SECRET}
       TEST_PATIENT_2_CLIENT_SECRET: ${TEST_PATIENT_2_CLIENT_SECRET}
+      VERIFICATION_SERVICE_CLIENT_SECRET: ${VERIFICATION_SERVICE_CLIENT_SECRET}
+      TEST_VERIFIER_CLIENT_SECRET: ${TEST_VERIFIER_CLIENT_SECRET}
     ports:
       - "8081:8080"
     volumes:
@@ -177,6 +179,10 @@ services:
     build:
       context: .
       dockerfile: services/verification-service/Dockerfile
+    env_file: .env
+    environment:
+      VERIFICATION_DATABASE_URL: postgresql+asyncpg://verification_app:${VERIFICATION_DB_PASSWORD}@postgres:5432/verification_db
+      INTERNAL_CLIENT_SECRET: ${VERIFICATION_SERVICE_CLIENT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -191,11 +197,15 @@ services:
       retries: 20
 
   verification-worker:
-    profiles: ["later-gates"]
     build:
       context: .
       dockerfile: services/verification-service/Dockerfile
     command: ["python", "-m", "app.application.verification_worker"]
+    env_file: .env
+    environment:
+      VERIFICATION_DATABASE_URL: postgresql+asyncpg://verification_app:${VERIFICATION_DB_PASSWORD}@postgres:5432/verification_db
+      INTERNAL_CLIENT_SECRET: ${VERIFICATION_SERVICE_CLIENT_SECRET}
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     depends_on:
       verification-api:
         condition: service_started
@@ -203,14 +213,34 @@ services:
       - internal
 
   verification-outbox-worker:
-    profiles: ["later-gates"]
     build:
       context: .
       dockerfile: services/verification-service/Dockerfile
     command: ["python", "-m", "app.infrastructure.outbox_worker"]
+    env_file: .env
+    environment:
+      VERIFICATION_DATABASE_URL: postgresql+asyncpg://verification_app:${VERIFICATION_DB_PASSWORD}@postgres:5432/verification_db
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     depends_on:
       verification-api:
         condition: service_started
+    networks:
+      - internal
+
+  verification-event-worker:
+    build:
+      context: .
+      dockerfile: services/verification-service/Dockerfile
+    command: ["python", "-m", "app.application.event_handlers"]
+    env_file: .env
+    environment:
+      VERIFICATION_DATABASE_URL: postgresql+asyncpg://verification_app:${VERIFICATION_DB_PASSWORD}@postgres:5432/verification_db
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      verification-api:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - internal
 
@@ -332,7 +362,6 @@ services:
       - internal
 
   verifier-web:
-    profiles: ["later-gates"]
     build:
       context: apps/verifier-web
     ports:
