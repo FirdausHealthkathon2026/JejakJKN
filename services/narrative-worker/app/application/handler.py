@@ -1,10 +1,10 @@
-"""Fetch a minimized package and store its deterministic narrative."""
+"""Fetch a minimized package and store its guarded AI or deterministic narrative."""
 
 import os
 
 import httpx
 
-from app.domain.narrator import narrate
+from app.infrastructure.llm_adapter import generate_narrative
 
 
 async def handle(envelope: dict) -> None:
@@ -32,14 +32,16 @@ async def handle(envelope: dict) -> None:
         )
         response.raise_for_status()
         package = response.json()
-        narrative, status, digest = narrate(package)
+        narrative, status, digest, method, model_info = await generate_narrative(
+            package, client=client
+        )
         stored = await client.put(
             f"{os.getenv('REVIEW_SERVICE_URL', 'http://review-api:8004')}/internal/v1/narratives/{run_id}",
             headers=headers,
             json={
                 "assessment_ref": run_id,
-                "method": "TEMPLATE",
-                "model_info": "deterministic-v1",
+                "method": method,
+                "model_info": model_info,
                 "input_digest": digest,
                 "narrative": narrative,
                 "validation_status": status,
