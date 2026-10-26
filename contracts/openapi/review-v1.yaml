@@ -1,33 +1,56 @@
 openapi: 3.1.0
-info:
-  title: JejakJKN Review & Audit Service API
-  version: 1.0.0
-x-implementation-status: planned-gate-6
+info: {title: JejakJKN Review & Audit Service API, version: 1.0.0}
+x-implementation-status: implemented-gate-6
 paths:
   /api/v1/review-cases:
     get:
       operationId: listReviewCases
-      summary: List verifier review cases within authorized organization scope
       responses:
-        "200":
-          description: Paginated review cases
-  /api/v1/review-cases/{id}:
+        '200': {description: Tenant review cases, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Case'}}}}}
+  /api/v1/review-cases/{case_id}:
     get:
       operationId: getReviewCaseDetail
-      summary: Get review case detail, narrative artifact, and audit trail (audited read)
+      parameters:
+        - {name: case_id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: X-Access-Purpose, in: header, required: true, schema: {type: string}}
       responses:
-        "200":
-          description: Review case detail
-  /api/v1/review-cases/{id}/decisions:
+        '200': {description: Audited review package, content: {application/json: {schema: {$ref: '#/components/schemas/Case'}}}}
+  /api/v1/review-cases/{case_id}/decisions:
     post:
       operationId: recordReviewDecision
-      summary: Append human reviewer decision and update hash-chained audit log
+      parameters:
+        - {name: case_id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8}}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/DecisionRequest'}}}}
       responses:
-        "201":
-          description: Review decision recorded
-  /internal/v1/narratives:
-    post:
+        '201': {description: Append-only human decision, content: {application/json: {schema: {type: object}}}}
+  /internal/v1/narratives/{assessment_ref}:
+    put:
       operationId: storeNarrativeArtifactInternal
+      parameters:
+        - {name: assessment_ref, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody: {required: true, content: {application/json: {schema: {type: object}}}}
       responses:
-        "201":
-          description: Narrative artifact persisted
+        '204': {description: Narrative stored, content: {application/json: {schema: {type: 'null'}}}}
+components:
+  schemas:
+    Case:
+      type: object
+      required: [id, verification_id, verification_run_id, claim_source, claim_id, state, is_stale, opened_at]
+      properties:
+        id: {type: string, format: uuid}
+        verification_id: {type: string, format: uuid}
+        verification_run_id: {type: string, format: uuid}
+        claim_source: {type: string}
+        claim_id: {type: string}
+        state: {type: string}
+        is_stale: {type: boolean}
+        opened_at: {type: string, format: date-time}
+        review_package: {type: [object, 'null']}
+        narrative: {type: [object, 'null']}
+    DecisionRequest:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: {type: string, enum: [NO_ACTION, REQUEST_CLARIFICATION, ESCALATE, CLOSE_REVIEW]}
+        reason: {type: string, minLength: 10}

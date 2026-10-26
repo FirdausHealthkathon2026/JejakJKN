@@ -99,6 +99,8 @@ def main() -> None:
             provider_contracts["evidence-service"] = operations
         elif path.name == "verification-v1.yaml":
             provider_contracts["verification-service"] = operations
+        elif path.name == "review-v1.yaml":
+            provider_contracts["review-service"] = operations
     for path in sorted((ROOT / "contracts/events/v1").glob("*.json")):
         Draft202012Validator.check_schema(json.loads(path.read_text()))
     for service, operations in provider_contracts.items():
