@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from jejakjkn_canonical.problems import Problem, problem_handler
 
+from app.api.routes_internal import router as internal_router
 from app.api.routes_public import router
 from app.infrastructure.db import database_ready
 
@@ -20,6 +21,7 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-Request-Id"],
 )
 app.include_router(router)
+app.include_router(internal_router)
 
 
 @app.exception_handler(RequestValidationError)
