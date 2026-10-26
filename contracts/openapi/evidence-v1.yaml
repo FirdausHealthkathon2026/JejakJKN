@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: JejakJKN Evidence & Confirmation Service API
   version: 1.0.0
-x-implementation-status: implemented-gate-2-3
+x-implementation-status: implemented-gate-2-4
 servers:
   - url: http://localhost:18080
 security:
@@ -80,6 +80,21 @@ paths:
       parameters: [{$ref: '#/components/parameters/SnapshotId'}]
       responses:
         '200': {description: Recorded patient response, content: {application/json: {schema: {$ref: '#/components/schemas/PatientResponse'}}}}
+  /internal/v1/encounters/{encounter_id}/evidence-snapshots:
+    post:
+      operationId: pinVerificationEvidenceSnapshot
+      parameters: [{$ref: '#/components/parameters/EncounterId'}]
+      requestBody:
+        required: false
+        content: {application/json: {schema: {type: object}}}
+      responses:
+        '201': {description: Immutable evidence snapshot pinned, content: {application/json: {schema: {$ref: '#/components/schemas/VerificationSnapshot'}}}}
+  /internal/v1/evidence-snapshots/{snapshot_id}:
+    get:
+      operationId: getVerificationEvidenceSnapshot
+      parameters: [{$ref: '#/components/parameters/SnapshotId'}]
+      responses:
+        '200': {description: Pinned evidence snapshot, content: {application/json: {schema: {$ref: '#/components/schemas/VerificationSnapshot'}}}}
 components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
@@ -212,6 +227,19 @@ components:
         overall_response: {type: string}
         submitted_at: {type: string, format: date-time}
         snapshot_status: {type: string}
+    VerificationSnapshot:
+      type: object
+      required: [snapshot_id, encounter_id, evidence_revision, episode_sync_status, presence_status, patient_confirmation_status, content_digest, items, attestation]
+      properties:
+        snapshot_id: {type: string, format: uuid}
+        encounter_id: {type: string, format: uuid}
+        evidence_revision: {type: integer}
+        episode_sync_status: {type: string}
+        presence_status: {type: string}
+        patient_confirmation_status: {type: string}
+        content_digest: {type: string, minLength: 64, maxLength: 64}
+        items: {type: array, items: {type: object}}
+        attestation: {type: object}
     Problem:
       type: object
       required: [type, title, status, detail, error_code]

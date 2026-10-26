@@ -64,7 +64,7 @@ def _path_parameters(route: str) -> set[str]:
 
 def _parameter_name(parameter: dict) -> str | None:
     if "$ref" in parameter:
-        return parameter["$ref"].rsplit("/", 1)[-1].replace("EncounterId", "encounter_id").replace("SnapshotId", "snapshot_id")
+        return parameter["$ref"].rsplit("/", 1)[-1].replace("EncounterId", "encounter_id").replace("SnapshotId", "snapshot_id").replace("VerificationId", "verification_id")
     return parameter.get("name")
 
 
@@ -97,6 +97,8 @@ def main() -> None:
             provider_contracts["encounter-service"] = operations
         elif path.name == "evidence-v1.yaml":
             provider_contracts["evidence-service"] = operations
+        elif path.name == "verification-v1.yaml":
+            provider_contracts["verification-service"] = operations
     for path in sorted((ROOT / "contracts/events/v1").glob("*.json")):
         Draft202012Validator.check_schema(json.loads(path.read_text()))
     for service, operations in provider_contracts.items():

@@ -271,9 +271,13 @@ components:
       additionalProperties: false
     CandidateSearchRequest:
       type: object
-      required: [participant_lookup_key, facility_namespace, facility_code, service_period_start, service_period_end]
+      oneOf:
+        - required: [participant_lookup_key]
+        - required: [patient_name_hmac]
+      required: [facility_namespace, facility_code, service_period_start, service_period_end]
       properties:
-        participant_lookup_key: {type: string, minLength: 64, maxLength: 64}
+        participant_lookup_key: {type: [string, 'null'], minLength: 64, maxLength: 64}
+        patient_name_hmac: {type: [string, 'null'], minLength: 64, maxLength: 64}
         facility_namespace: {type: string}
         facility_code: {type: string}
         service_period_start: {type: string, format: date-time}
