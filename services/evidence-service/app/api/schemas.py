@@ -144,3 +144,15 @@ class PatientResponseView(BaseModel):
     overall_response: str
     submitted_at: datetime
     snapshot_status: str
+
+
+class VerificationSnapshotView(BaseModel):
+    snapshot_id: UUID
+    encounter_id: UUID
+    evidence_revision: int
+    episode_sync_status: str
+    presence_status: str
+    patient_confirmation_status: str
+    content_digest: str
+    items: list[dict]
+    attestation: dict | None

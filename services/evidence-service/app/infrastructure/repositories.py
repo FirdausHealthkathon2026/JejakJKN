@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import CareEpisode, EvidenceQuarantine, EvidenceRecord, EvidenceVersion, PatientResponse, SummarySnapshot
+from .models import CareEpisode, EvidenceQuarantine, EvidenceRecord, EvidenceVersion, PatientItemResponse, PatientResponse, SummarySnapshot, VerificationEvidenceSnapshot
 
 
 class EvidenceRepository:
@@ -46,6 +46,15 @@ class EvidenceRepository:
         )
         return list(result.tuples())
 
+    async def all_current_versions(self, encounter_id: UUID) -> list[tuple[EvidenceRecord, EvidenceVersion]]:
+        result = await self.session.execute(
+            select(EvidenceRecord, EvidenceVersion)
+            .join(EvidenceVersion, (EvidenceVersion.evidence_id == EvidenceRecord.id) & (EvidenceVersion.version == EvidenceRecord.current_version))
+            .where(EvidenceRecord.encounter_id == encounter_id)
+            .order_by(EvidenceVersion.occurred_at, EvidenceRecord.id)
+        )
+        return list(result.tuples())
+
     async def latest_snapshot(self, encounter_id: UUID) -> SummarySnapshot | None:
         return await self.session.scalar(select(SummarySnapshot).where(SummarySnapshot.encounter_id == encounter_id).order_by(SummarySnapshot.evidence_revision.desc(), SummarySnapshot.created_at.desc()).limit(1))
 
@@ -58,6 +67,15 @@ class EvidenceRepository:
 
     async def response_for_snapshot(self, snapshot_id: UUID) -> PatientResponse | None:
         return await self.session.scalar(select(PatientResponse).where(PatientResponse.snapshot_id == snapshot_id).order_by(PatientResponse.submitted_at.desc()).limit(1))
+
+    async def item_responses(self, response_id: UUID) -> list[PatientItemResponse]:
+        return list((await self.session.scalars(select(PatientItemResponse).where(PatientItemResponse.response_id == response_id))).all())
+
+    async def verification_snapshot(self, snapshot_id: UUID) -> VerificationEvidenceSnapshot | None:
+        return await self.session.get(VerificationEvidenceSnapshot, snapshot_id)
+
+    async def verification_snapshot_by_digest(self, encounter_id: UUID, revision: int, digest: str) -> VerificationEvidenceSnapshot | None:
+        return await self.session.scalar(select(VerificationEvidenceSnapshot).where(VerificationEvidenceSnapshot.encounter_id == encounter_id, VerificationEvidenceSnapshot.evidence_revision == revision, VerificationEvidenceSnapshot.content_digest == digest))
 
     async def response_by_idempotency(self, key: str) -> PatientResponse | None:
         return await self.session.scalar(select(PatientResponse).where(PatientResponse.idempotency_key == key))

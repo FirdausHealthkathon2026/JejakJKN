@@ -36,6 +36,7 @@ async def search_candidates(body: CandidateSearchRequest, _: Principal = Depends
         return {"candidates": [], "truncated_by_limit": False}
     encounters = await repo.search_candidates(
         participant_lookup_key=body.participant_lookup_key,
+        patient_name_hmac=body.patient_name_hmac,
         organization_id=organization.id,
         start=body.service_period_start,
         end=body.service_period_end,

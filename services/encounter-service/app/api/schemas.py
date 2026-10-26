@@ -85,7 +85,8 @@ class ExceptionResponse(BaseModel):
 
 
 class CandidateSearchRequest(BaseModel):
-    participant_lookup_key: str = Field(min_length=64, max_length=64)
+    participant_lookup_key: str | None = Field(default=None, min_length=64, max_length=64)
+    patient_name_hmac: str | None = Field(default=None, min_length=64, max_length=64)
     facility_namespace: str = Field(min_length=1, max_length=64)
     facility_code: str = Field(min_length=1, max_length=64)
     service_period_start: datetime
@@ -96,6 +97,8 @@ class CandidateSearchRequest(BaseModel):
     def valid_period(self) -> "CandidateSearchRequest":
         if self.service_period_end < self.service_period_start:
             raise ValueError("service_period_end must not precede service_period_start")
+        if bool(self.participant_lookup_key) == bool(self.patient_name_hmac):
+            raise ValueError("provide exactly one patient identity lookup key")
         return self
 
 

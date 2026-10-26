@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from jejakjkn_canonical.problems import Problem, problem_handler
 
+from app.api.routes_internal import router as internal_router
 from app.api.routes_public import router
 from app.application.use_cases import EvidenceApplication
 from app.config import get_settings
@@ -43,6 +44,7 @@ app = FastAPI(title="JejakJKN Evidence & Confirmation Service", version="1.0.0",
 app.add_exception_handler(Problem, problem_handler)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["GET", "POST"], allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-Request-Id", "X-Correlation-Id"])
 app.include_router(router)
+app.include_router(internal_router)
 
 
 @app.exception_handler(RequestValidationError)
@@ -60,7 +62,7 @@ async def request_context(request: Request, call_next):
 
 @app.get("/health", tags=["operations"])
 async def health() -> dict[str, str]:
-    return {"status": "ok", "service": "evidence-service", "gate": "implemented-gate-2-3"}
+    return {"status": "ok", "service": "evidence-service", "gate": "implemented-gate-2-4"}
 
 
 @app.get("/ready", tags=["operations"])

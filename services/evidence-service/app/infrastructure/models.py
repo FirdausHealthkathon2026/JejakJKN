@@ -126,6 +126,22 @@ class SummarySnapshot(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class VerificationEvidenceSnapshot(Base):
+    __tablename__ = "verification_evidence_snapshots"
+    __table_args__ = (UniqueConstraint("encounter_id", "evidence_revision", "content_digest"),)
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
+    encounter_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("care_episodes.encounter_id"), index=True)
+    evidence_revision: Mapped[int] = mapped_column(Integer)
+    episode_sync_status: Mapped[str] = mapped_column(String(32))
+    presence_status: Mapped[str] = mapped_column(String(32))
+    patient_confirmation_status: Mapped[str] = mapped_column(String(32))
+    pinned_items_json: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    pinned_attestation_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    content_digest: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class PatientResponse(Base):
     __tablename__ = "patient_responses"
     __table_args__ = (Index("idx_patient_responses_enc", "encounter_id", "submitted_at"),)

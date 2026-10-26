@@ -46,7 +46,8 @@ class EncounterRepository:
     async def search_candidates(
         self,
         *,
-        participant_lookup_key: str,
+        participant_lookup_key: str | None,
+        patient_name_hmac: str | None,
         organization_id: UUID,
         start: datetime,
         end: datetime,
@@ -56,7 +57,7 @@ class EncounterRepository:
             select(Encounter)
             .join(Patient, Patient.id == Encounter.patient_id)
             .where(
-                Patient.participant_lookup_key == participant_lookup_key,
+                Patient.participant_lookup_key == participant_lookup_key if participant_lookup_key else Patient.display_name_normalized_hmac == patient_name_hmac,
                 Encounter.organization_id == organization_id,
                 Encounter.started_at <= end,
                 or_(Encounter.ended_at.is_(None), Encounter.ended_at >= start),
