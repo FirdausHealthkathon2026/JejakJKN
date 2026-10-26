@@ -18,7 +18,10 @@ async def handle(envelope: dict) -> None:
         if await session.get(ReviewInbox, event_id):
             return
         run_id = envelope["data"].get("run_id", envelope["aggregate_id"])
-        if event_type == "verification.completed.v1":
+        if event_type in {
+            "verification.completed.v1",
+            "verification.duplicate_suspected.v1",
+        }:
             package = await VerificationClient(get_settings()).review_package(run_id)
             if package["assessment"]["review_required"]:
                 existing = await session.get(ReviewCase, UUID(run_id))
