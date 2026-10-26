@@ -6,4 +6,4 @@ if [[ ! -d "$project_dir/.deps" ]]; then
   echo "Missing development environment. Run 'make install' first." >&2
   exit 2
 fi
-PYTHONPATH="$project_dir/.deps" "$python_bin" "$project_dir/scripts/validate-contracts.py"
+PYTHONPATH="$project_dir/.deps:$project_dir/libs/python-observability" "$python_bin" "$project_dir/scripts/validate-contracts.py"

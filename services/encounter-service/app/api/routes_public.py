@@ -6,7 +6,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from jejakjkn_auth.dependencies import principal_dependency, require_roles, require_scopes
+from jejakjkn_auth.dependencies import (
+    principal_dependency,
+    require_roles,
+    require_scopes,
+)
 from jejakjkn_auth.jwt_verifier import Principal
 from jejakjkn_canonical.problems import Problem
 
@@ -28,21 +32,37 @@ from .schemas import (
 )
 
 settings = get_settings()
-current_principal = principal_dependency(settings.keycloak_issuer_url, settings.jwt_audience, settings.keycloak_jwks_url)
+current_principal = principal_dependency(
+    settings.keycloak_issuer_url, settings.jwt_audience, settings.keycloak_jwks_url
+)
 patient_principal = require_roles(current_principal, "patient")
-checkin_principal = require_roles(require_scopes(current_principal, "encounter:checkin"), "simrs_scanner")
-checkout_principal = require_roles(require_scopes(current_principal, "encounter:checkout"), "simrs_scanner")
-exception_principal = require_roles(require_scopes(current_principal, "encounter:exception"), "simrs_scanner")
+checkin_principal = require_roles(
+    require_scopes(current_principal, "encounter:checkin"), "simrs_scanner"
+)
+checkout_principal = require_roles(
+    require_scopes(current_principal, "encounter:checkout"), "simrs_scanner"
+)
+exception_principal = require_roles(
+    require_scopes(current_principal, "encounter:exception"), "simrs_scanner"
+)
 
 router = APIRouter(prefix="/api/v1")
 
 
-def application(request: Request, session: AsyncSession = Depends(get_session)) -> EncounterApplication:
-    return EncounterApplication(session, request.app.state.qr_store, request.app.state.qr_signer, settings)
+def application(
+    request: Request, session: AsyncSession = Depends(get_session)
+) -> EncounterApplication:
+    return EncounterApplication(
+        session, request.app.state.qr_store, request.app.state.qr_signer, settings
+    )
 
 
 @router.post("/patient/qr-tokens", response_model=QrTokenResponse, status_code=201)
-async def issue_qr(body: IssueQrRequest, principal: Principal = Depends(patient_principal), app: EncounterApplication = Depends(application)) -> dict:
+async def issue_qr(
+    body: IssueQrRequest,
+    principal: Principal = Depends(patient_principal),
+    app: EncounterApplication = Depends(application),
+) -> dict:
     return await app.issue_qr(body, principal)
 
 
@@ -54,27 +74,48 @@ async def list_encounters(
     cursor: UUID | None = None,
 ) -> dict:
     if principal.patient_id is None:
-        raise Problem(403, "PATIENT_CONTEXT_REQUIRED", "Forbidden", "The token is not bound to a patient.")
-    rows = await EncounterRepository(session).patient_encounters(principal.patient_id, limit, cursor)
+        raise Problem(
+            403,
+            "PATIENT_CONTEXT_REQUIRED",
+            "Forbidden",
+            "The token is not bound to a patient.",
+        )
+    rows = await EncounterRepository(session).patient_encounters(
+        principal.patient_id, limit, cursor
+    )
     has_more = len(rows) > limit
     visible = rows[:limit]
-    items = [_summary(encounter, organization.external_code, organization.display_name) for encounter, organization in visible]
+    items = [
+        _summary(encounter, organization.external_code, organization.display_name)
+        for encounter, organization in visible
+    ]
     return {"items": items, "next_cursor": visible[-1][0].id if has_more else None}
 
 
 @router.get("/patient/encounters/{encounter_id}", response_model=EncounterSummary)
-async def get_encounter(encounter_id: UUID, principal: Principal = Depends(patient_principal), session: AsyncSession = Depends(get_session)) -> dict:
+async def get_encounter(
+    encounter_id: UUID,
+    principal: Principal = Depends(patient_principal),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
     repo = EncounterRepository(session)
     encounter = await repo.encounter(encounter_id)
     if not encounter or encounter.patient_id != principal.patient_id:
-        raise Problem(404, "ENCOUNTER_NOT_FOUND", "Encounter not found", "The encounter was not found.")
+        raise Problem(
+            404,
+            "ENCOUNTER_NOT_FOUND",
+            "Encounter not found",
+            "The encounter was not found.",
+        )
     from app.infrastructure.models import Organization
 
     organization = await session.get(Organization, encounter.organization_id)
     return _summary(encounter, organization.external_code, organization.display_name)
 
 
-@router.post("/integrations/qr/check-in", response_model=CheckInResponse, status_code=201)
+@router.post(
+    "/integrations/qr/check-in", response_model=CheckInResponse, status_code=201
+)
 async def check_in(
     body: RedeemQrRequest,
     response: Response,
@@ -99,7 +140,11 @@ async def check_out(
     return result
 
 
-@router.post("/integrations/encounters/{encounter_id}/exceptions", response_model=ExceptionResponse, status_code=201)
+@router.post(
+    "/integrations/encounters/{encounter_id}/exceptions",
+    response_model=ExceptionResponse,
+    status_code=201,
+)
 async def record_exception(
     encounter_id: UUID,
     body: ExceptionRequest,
@@ -120,6 +165,7 @@ def _summary(encounter, facility_code: str, facility_name: str) -> dict:
         "started_at": encounter.started_at,
         "ended_at": encounter.ended_at,
         "check_in_successful": encounter.presence_status == "QR_VERIFIED",
-        "check_out_successful": encounter.status in {"CHECKED_OUT", "CLOSED_WITH_EXCEPTION"},
+        "check_out_successful": encounter.status
+        in {"CHECKED_OUT", "CLOSED_WITH_EXCEPTION"},
         "confirmation_status": "NOT_AVAILABLE",
     }

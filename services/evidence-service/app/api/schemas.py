@@ -26,7 +26,14 @@ class ClinicalEventRequest(BaseModel):
     source_system: str = Field(min_length=1, max_length=64)
     source_sequence: int = Field(ge=1)
     external_record_id: str = Field(min_length=1, max_length=128)
-    event_type: Literal["DIAGNOSIS", "PROCEDURE", "MEDICATION_PRESCRIBED", "MEDICATION_DISPENSED", "STAGE_COMPLETION", "DOCUMENT_FINGERPRINT"]
+    event_type: Literal[
+        "DIAGNOSIS",
+        "PROCEDURE",
+        "MEDICATION_PRESCRIBED",
+        "MEDICATION_DISPENSED",
+        "STAGE_COMPLETION",
+        "DOCUMENT_FINGERPRINT",
+    ]
     record_version: Literal[1] = 1
     occurred_at: datetime
     actor: Actor
@@ -106,7 +113,15 @@ class CheckoutSummaryResponse(BaseModel):
 class ItemResponseRequest(BaseModel):
     evidence_id: UUID
     response: Literal["CONFIRMED", "DISPUTED"]
-    reason: Literal["SERVICE_NOT_RECEIVED", "MEDICATION_NOT_RECEIVED", "QUANTITY_DIFFERENT", "OTHER"] | None = None
+    reason: (
+        Literal[
+            "SERVICE_NOT_RECEIVED",
+            "MEDICATION_NOT_RECEIVED",
+            "QUANTITY_DIFFERENT",
+            "OTHER",
+        ]
+        | None
+    ) = None
     note: str | None = Field(default=None, max_length=500)
 
     @model_validator(mode="after")
@@ -128,8 +143,12 @@ class PatientResponseRequest(BaseModel):
         if self.overall_response == "CONFIRMED" and disputed:
             raise ValueError("CONFIRMED cannot contain disputed items")
         if self.overall_response in {"PARTIALLY_DISPUTED", "DISPUTED"} and not disputed:
-            raise ValueError("a disputed overall response needs at least one disputed item")
-        if self.overall_response == "PARTIALLY_DISPUTED" and disputed == len(self.items):
+            raise ValueError(
+                "a disputed overall response needs at least one disputed item"
+            )
+        if self.overall_response == "PARTIALLY_DISPUTED" and disputed == len(
+            self.items
+        ):
             raise ValueError("PARTIALLY_DISPUTED needs at least one confirmed item")
         if self.overall_response == "DISPUTED" and disputed != len(self.items):
             raise ValueError("DISPUTED cannot contain confirmed items")

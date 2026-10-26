@@ -47,7 +47,16 @@ class RedisQrStore:
     def __init__(self, redis: Redis) -> None:
         self.redis = redis
 
-    async def issue(self, *, nonce: str, patient_id: str, purpose: str, encounter_id: str | None, facility_hint: str | None, ttl_seconds: int) -> None:
+    async def issue(
+        self,
+        *,
+        nonce: str,
+        patient_id: str,
+        purpose: str,
+        encounter_id: str | None,
+        facility_hint: str | None,
+        ttl_seconds: int,
+    ) -> None:
         key = f"qr:nonce:{nonce_digest(nonce)}"
         values: dict[str, Any] = {
             "state": "ISSUED",
@@ -65,26 +74,64 @@ class RedisQrStore:
         except RedisError as exc:
             raise _unavailable(exc)
 
-    async def reserve(self, *, nonce: str, reservation_key: str, purpose: str, encounter_id: str, facility_code: str) -> Reservation:
+    async def reserve(
+        self,
+        *,
+        nonce: str,
+        reservation_key: str,
+        purpose: str,
+        encounter_id: str,
+        facility_code: str,
+    ) -> Reservation:
         try:
-            raw = await self.redis.eval(RESERVE_OR_REPLAY, 1, f"qr:nonce:{nonce_digest(nonce)}", reservation_key, purpose, encounter_id, facility_code)
+            raw = await self.redis.eval(
+                RESERVE_OR_REPLAY,
+                1,
+                f"qr:nonce:{nonce_digest(nonce)}",
+                reservation_key,
+                purpose,
+                encounter_id,
+                facility_code,
+            )
         except RedisError as exc:
             raise _unavailable(exc)
         values = [v.decode() if isinstance(v, bytes) else str(v) for v in raw]
         state = values[0]
         if state == "EXPIRED_OR_UNKNOWN":
-            raise Problem(410, "QR_TOKEN_EXPIRED", "QR token expired", "Request a new QR token and scan it again.")
+            raise Problem(
+                410,
+                "QR_TOKEN_EXPIRED",
+                "QR token expired",
+                "Request a new QR token and scan it again.",
+            )
         if state == "FACILITY_MISMATCH":
-            raise Problem(403, "FACILITY_MISMATCH", "Facility mismatch", "This QR token is not valid for the scanner facility.")
+            raise Problem(
+                403,
+                "FACILITY_MISMATCH",
+                "Facility mismatch",
+                "This QR token is not valid for the scanner facility.",
+            )
         if state == "WRONG_PURPOSE":
-            raise Problem(422, "WRONG_QR_PURPOSE", "Wrong QR purpose", "The QR token has a different purpose.")
+            raise Problem(
+                422,
+                "WRONG_QR_PURPOSE",
+                "Wrong QR purpose",
+                "The QR token has a different purpose.",
+            )
         if state == "ALREADY_CONSUMED_BY_OTHER":
-            raise Problem(409, "QR_ALREADY_CONSUMED", "QR token already consumed", "The single-use QR token has already been reserved or redeemed.")
+            raise Problem(
+                409,
+                "QR_ALREADY_CONSUMED",
+                "QR token already consumed",
+                "The single-use QR token has already been reserved or redeemed.",
+            )
         return Reservation(state, values[-2], values[-1])
 
     async def commit(self, nonce: str) -> None:
         try:
-            await self.redis.hset(f"qr:nonce:{nonce_digest(nonce)}", mapping={"state": "COMMITTED"})
+            await self.redis.hset(
+                f"qr:nonce:{nonce_digest(nonce)}", mapping={"state": "COMMITTED"}
+            )
         except RedisError:
             return
 
@@ -96,4 +143,9 @@ class RedisQrStore:
 
 
 def _unavailable(exc: Exception) -> Problem:
-    return Problem(503, "QR_STORE_UNAVAILABLE", "QR service unavailable", "QR redemption is temporarily unavailable; no encounter was created.")
+    return Problem(
+        503,
+        "QR_STORE_UNAVAILABLE",
+        "QR service unavailable",
+        "QR redemption is temporarily unavailable; no encounter was created.",
+    )

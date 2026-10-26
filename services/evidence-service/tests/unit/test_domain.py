@@ -28,9 +28,13 @@ def test_dispute_requires_reason_and_consistent_overall_result() -> None:
     evidence_id = uuid4()
     with pytest.raises(ValidationError):
         ItemResponseRequest(evidence_id=evidence_id, response="DISPUTED")
-    disputed = ItemResponseRequest(evidence_id=evidence_id, response="DISPUTED", reason="OTHER")
+    disputed = ItemResponseRequest(
+        evidence_id=evidence_id, response="DISPUTED", reason="OTHER"
+    )
     confirmed = ItemResponseRequest(evidence_id=uuid4(), response="CONFIRMED")
-    PatientResponseRequest(overall_response="PARTIALLY_DISPUTED", items=[disputed, confirmed])
+    PatientResponseRequest(
+        overall_response="PARTIALLY_DISPUTED", items=[disputed, confirmed]
+    )
     with pytest.raises(ValidationError):
         PatientResponseRequest(overall_response="PARTIALLY_DISPUTED", items=[disputed])
     with pytest.raises(ValidationError):

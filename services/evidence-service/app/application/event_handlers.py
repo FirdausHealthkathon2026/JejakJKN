@@ -26,8 +26,10 @@ async def handle(envelope: dict) -> None:
         if event_type == "encounter.opened.v1":
             if episode is None:
                 episode = CareEpisode(
-                    encounter_id=encounter_id, organization_id=UUID(envelope["organization_id"]),
-                    patient_id=UUID(data["patient_id"]), encounter_status="OPEN",
+                    encounter_id=encounter_id,
+                    organization_id=UUID(envelope["organization_id"]),
+                    patient_id=UUID(data["patient_id"]),
+                    encounter_status="OPEN",
                     presence_status=data.get("presence_status", "QR_VERIFIED"),
                 )
                 session.add(episode)
@@ -40,8 +42,10 @@ async def handle(envelope: dict) -> None:
         elif event_type == "encounter.exception_recorded.v1":
             if episode is None:
                 episode = CareEpisode(
-                    encounter_id=encounter_id, organization_id=UUID(envelope["organization_id"]),
-                    patient_id=UUID(data["patient_id"]), encounter_status=data["encounter_status"],
+                    encounter_id=encounter_id,
+                    organization_id=UUID(envelope["organization_id"]),
+                    patient_id=UUID(data["patient_id"]),
+                    encounter_status=data["encounter_status"],
                     presence_status="EXCEPTION_DOCUMENTED",
                 )
                 session.add(episode)
@@ -51,7 +55,9 @@ async def handle(envelope: dict) -> None:
             if data.get("checked_out_at"):
                 episode.checked_out_at = datetime.fromisoformat(data["checked_out_at"])
                 await session.flush()
-                await EvidenceApplication(session, get_settings())._build_snapshot(episode)
+                await EvidenceApplication(session, get_settings())._build_snapshot(
+                    episode
+                )
         session.add(EvidenceInbox(event_id=event_id, event_type=event_type))
         await session.commit()
 

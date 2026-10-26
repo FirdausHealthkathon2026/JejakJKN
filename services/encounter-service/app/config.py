@@ -15,7 +15,9 @@ class Settings(BaseSettings):
     redis_url: str = "redis://redis:6379/0"
     rabbitmq_url: str = "amqp://guest:guest@rabbitmq:5672/"
     keycloak_issuer_url: str = "http://localhost:8081/realms/jejakjkn-dev"
-    keycloak_jwks_url: str = "http://keycloak:8080/realms/jejakjkn-dev/protocol/openid-connect/certs"
+    keycloak_jwks_url: str = (
+        "http://keycloak:8080/realms/jejakjkn-dev/protocol/openid-connect/certs"
+    )
     jwt_audience: str = "jejakjkn-api"
     qr_token_ttl_seconds: int = Field(default=60, ge=30, le=120)
     qr_signing_private_key_path: Path = Path("/run/secrets/qr-signing-private.pem")

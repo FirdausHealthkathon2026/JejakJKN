@@ -69,7 +69,13 @@ class EncounterListResponse(BaseModel):
 
 class ExceptionRequest(BaseModel):
     exception_phase: Literal["CHECK_IN", "CHECK_OUT"]
-    reason_code: Literal["NO_SMARTPHONE", "EMERGENCY_UNCONSCIOUS", "QR_DEVICE_FAILURE", "NETWORK_OUTAGE", "PATIENT_INCAPACITATED"]
+    reason_code: Literal[
+        "NO_SMARTPHONE",
+        "EMERGENCY_UNCONSCIOUS",
+        "QR_DEVICE_FAILURE",
+        "NETWORK_OUTAGE",
+        "PATIENT_INCAPACITATED",
+    ]
     patient_id: UUID | None = None
     facility_external_code: str = Field(min_length=1, max_length=64)
     service_type: Literal["OUTPATIENT", "INPATIENT", "EMERGENCY"] = "OUTPATIENT"
@@ -85,7 +91,9 @@ class ExceptionResponse(BaseModel):
 
 
 class CandidateSearchRequest(BaseModel):
-    participant_lookup_key: str | None = Field(default=None, min_length=64, max_length=64)
+    participant_lookup_key: str | None = Field(
+        default=None, min_length=64, max_length=64
+    )
     patient_name_hmac: str | None = Field(default=None, min_length=64, max_length=64)
     facility_namespace: str = Field(min_length=1, max_length=64)
     facility_code: str = Field(min_length=1, max_length=64)

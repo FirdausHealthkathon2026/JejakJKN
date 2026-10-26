@@ -21,3 +21,18 @@ def test_local_medication_maps_to_canonical_catalog() -> None:
 def test_unknown_local_code_is_rejected() -> None:
     with pytest.raises(ValueError, match="unsupported"):
         translate({"jenis": "OBAT", "kode": "UNKNOWN", "urutan": 1, "id_rekam": "RX-2"})
+
+
+def test_strip_quantity_is_converted_to_tablets() -> None:
+    result = translate(
+        {
+            "jenis": "OBAT",
+            "kode": "OB-PCT500-STR",
+            "urutan": 1,
+            "id_rekam": "RX-3",
+            "jumlah": 2,
+            "satuan": "strip10",
+        }
+    )
+    assert result["content"]["quantity"] == 20
+    assert result["content"]["unit"] == "tablet"
