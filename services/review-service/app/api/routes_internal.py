@@ -3,6 +3,7 @@
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from jejakjkn_auth.dependencies import principal_dependency, require_roles
@@ -39,7 +40,11 @@ async def put_narrative(
             "Invalid narrative",
             "Path and body assessment references differ.",
         )
-    existing = await session.get(NarrativeArtifact, body.assessment_ref)
+    existing = await session.scalar(
+        select(NarrativeArtifact).where(
+            NarrativeArtifact.assessment_ref == body.assessment_ref
+        )
+    )
     if not existing:
         session.add(
             NarrativeArtifact(
