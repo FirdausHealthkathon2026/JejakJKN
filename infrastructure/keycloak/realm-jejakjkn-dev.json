@@ -71,7 +71,9 @@
     {"name": "evidence:readstatus", "protocol": "openid-connect"},
     {"name": "verification:create", "protocol": "openid-connect"},
     {"name": "verification:read", "protocol": "openid-connect"},
-    {"name": "verification:recheck", "protocol": "openid-connect"}
+    {"name": "verification:recheck", "protocol": "openid-connect"},
+    {"name": "review:read", "protocol": "openid-connect"},
+    {"name": "review:decide", "protocol": "openid-connect"}
   ],
   "clients": [
     {
@@ -120,13 +122,23 @@
       "redirectUris": ["http://localhost:5175/*"],
       "webOrigins": ["http://localhost:5175"],
       "attributes": {"pkce.code.challenge.method": "S256"},
-      "defaultClientScopes": ["profile", "roles", "web-origins", "jejakjkn-audience", "organization-context", "verification:create", "verification:read", "verification:recheck"]
+      "defaultClientScopes": ["profile", "roles", "web-origins", "jejakjkn-audience", "organization-context", "verification:create", "verification:read", "verification:recheck", "review:read", "review:decide"]
     },
     {
       "clientId": "verification-service",
       "name": "Verification Internal Service",
       "publicClient": false,
       "secret": "${VERIFICATION_SERVICE_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": ["roles", "jejakjkn-audience"]
+    },
+    {
+      "clientId": "review-service",
+      "name": "Review Internal Service",
+      "publicClient": false,
+      "secret": "${REVIEW_SERVICE_CLIENT_SECRET}",
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
@@ -140,7 +152,7 @@
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "defaultClientScopes": ["roles", "jejakjkn-audience", "verification:create", "verification:read", "verification:recheck"],
+      "defaultClientScopes": ["roles", "jejakjkn-audience", "verification:create", "verification:read", "verification:recheck", "review:read", "review:decide"],
       "protocolMappers": [
         {"name": "organization-id", "protocol": "openid-connect", "protocolMapper": "oidc-hardcoded-claim-mapper", "config": {"claim.name": "org_id", "claim.value": "20000000-0000-4000-8000-000000000001", "jsonType.label": "String", "access.token.claim": "true"}},
         {"name": "organization-type", "protocol": "openid-connect", "protocolMapper": "oidc-hardcoded-claim-mapper", "config": {"claim.name": "org_type", "claim.value": "VERIFIER", "jsonType.label": "String", "access.token.claim": "true"}}
@@ -205,10 +217,16 @@
       "realmRoles": ["internal_service"]
     },
     {
+      "username": "service-account-review-service",
+      "enabled": true,
+      "serviceAccountClientId": "review-service",
+      "realmRoles": ["internal_service"]
+    },
+    {
       "username": "service-account-test-verifier-client",
       "enabled": true,
       "serviceAccountClientId": "test-verifier-client",
-      "realmRoles": ["verifier"]
+      "realmRoles": ["verifier", "review_supervisor"]
     },
     {
       "username": "service-account-simrs-a-adapter",

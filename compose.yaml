@@ -71,6 +71,7 @@ services:
       TEST_PATIENT_2_CLIENT_SECRET: ${TEST_PATIENT_2_CLIENT_SECRET}
       VERIFICATION_SERVICE_CLIENT_SECRET: ${VERIFICATION_SERVICE_CLIENT_SECRET}
       TEST_VERIFIER_CLIENT_SECRET: ${TEST_VERIFIER_CLIENT_SECRET}
+      REVIEW_SERVICE_CLIENT_SECRET: ${REVIEW_SERVICE_CLIENT_SECRET}
     ports:
       - "8081:8080"
     volumes:
@@ -248,6 +249,10 @@ services:
     build:
       context: .
       dockerfile: services/review-service/Dockerfile
+    env_file: .env
+    environment:
+      REVIEW_DATABASE_URL: postgresql+asyncpg://review_app:${REVIEW_DB_PASSWORD}@postgres:5432/review_db
+      INTERNAL_CLIENT_SECRET: ${REVIEW_SERVICE_CLIENT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -262,22 +267,43 @@ services:
       retries: 20
 
   review-outbox-worker:
-    profiles: ["later-gates"]
     build:
       context: .
       dockerfile: services/review-service/Dockerfile
     command: ["python", "-m", "app.infrastructure.outbox_worker"]
+    env_file: .env
+    environment:
+      REVIEW_DATABASE_URL: postgresql+asyncpg://review_app:${REVIEW_DB_PASSWORD}@postgres:5432/review_db
     depends_on:
       review-api:
         condition: service_started
     networks:
       - internal
 
+  review-event-worker:
+    build:
+      context: .
+      dockerfile: services/review-service/Dockerfile
+    command: ["python", "-m", "app.application.event_handlers"]
+    env_file: .env
+    environment:
+      REVIEW_DATABASE_URL: postgresql+asyncpg://review_app:${REVIEW_DB_PASSWORD}@postgres:5432/review_db
+      INTERNAL_CLIENT_SECRET: ${REVIEW_SERVICE_CLIENT_SECRET}
+    depends_on:
+      review-api:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - internal
+
   narrative-worker:
-    profiles: ["narrative"]
     build:
       context: .
       dockerfile: services/narrative-worker/Dockerfile
+    env_file: .env
+    environment:
+      INTERNAL_CLIENT_SECRET: ${REVIEW_SERVICE_CLIENT_SECRET}
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -331,17 +357,25 @@ services:
       - internal
 
   simrs-b-api:
-    profiles: ["simrs-b"]
     build:
       context: .
       dockerfile: simulators/simrs-b-backend/Dockerfile
     ports:
       - "8102:8102"
+    environment:
+      JEJAKJKN_API_URL: http://api-gateway:8080
+      KEYCLOAK_TOKEN_URL: http://keycloak:8080/realms/jejakjkn-dev/protocol/openid-connect/token
+      SIMRS_CLIENT_SECRET: ${SIMRS_B_CLIENT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
       api-gateway:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8102/ready')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     networks:
       - internal
 

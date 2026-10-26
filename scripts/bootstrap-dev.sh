@@ -33,6 +33,7 @@ if [[ ! -f "$env_file" ]]; then
   test_patient_2_secret="$(openssl rand -hex 24)"
   verification_service_secret="$(openssl rand -hex 24)"
   test_verifier_secret="$(openssl rand -hex 24)"
+  review_service_secret="$(openssl rand -hex 24)"
   sed -i \
     -e "s/POSTGRES_SUPERUSER_PASSWORD=change-me-local-only/POSTGRES_SUPERUSER_PASSWORD=$postgres_password/" \
     -e "s/ENCOUNTER_DB_PASSWORD=change-me-local-only/ENCOUNTER_DB_PASSWORD=$encounter_db_password/" \
@@ -49,9 +50,12 @@ if [[ ! -f "$env_file" ]]; then
     -e "s/TEST_PATIENT_2_CLIENT_SECRET=change-me-local-only/TEST_PATIENT_2_CLIENT_SECRET=$test_patient_2_secret/" \
     -e "s/VERIFICATION_SERVICE_CLIENT_SECRET=change-me-local-only/VERIFICATION_SERVICE_CLIENT_SECRET=$verification_service_secret/" \
     -e "s/TEST_VERIFIER_CLIENT_SECRET=change-me-local-only/TEST_VERIFIER_CLIENT_SECRET=$test_verifier_secret/" \
+    -e "s/REVIEW_SERVICE_CLIENT_SECRET=change-me-local-only/REVIEW_SERVICE_CLIENT_SECRET=$review_service_secret/" \
     -e "s#ENCOUNTER_DATABASE_URL=postgresql+asyncpg://encounter_app:change-me-local-only@postgres:5432/encounter_db#ENCOUNTER_DATABASE_URL=postgresql+asyncpg://encounter_app:$encounter_db_password@postgres:5432/encounter_db#" \
     -e "s#EVIDENCE_DATABASE_URL=postgresql+asyncpg://evidence_app:change-me-local-only@postgres:5432/evidence_db#EVIDENCE_DATABASE_URL=postgresql+asyncpg://evidence_app:$evidence_db_password@postgres:5432/evidence_db#" \
     -e "s#VERIFICATION_DATABASE_URL=postgresql+asyncpg://verification_app:change-me-local-only@postgres:5432/verification_db#VERIFICATION_DATABASE_URL=postgresql+asyncpg://verification_app:$verification_db_password@postgres:5432/verification_db#" \
+    -e "s#REVIEW_DATABASE_URL=postgresql+asyncpg://review_app:change-me-local-only@postgres:5432/review_db#REVIEW_DATABASE_URL=postgresql+asyncpg://review_app:$review_db_password@postgres:5432/review_db#" \
+    -e "s#SIMRS_B_DATABASE_URL=postgresql+asyncpg://simrs_b_app:change-me-local-only@postgres:5432/simrs_b_db#SIMRS_B_DATABASE_URL=postgresql+asyncpg://simrs_b_app:$simrs_b_password@postgres:5432/simrs_b_db#" \
     -e "s#SIMRS_A_DATABASE_URL=postgresql+asyncpg://simrs_a_app:change-me-local-only@postgres:5432/simrs_a_db#SIMRS_A_DATABASE_URL=postgresql+asyncpg://simrs_a_app:$simrs_a_db_password@postgres:5432/simrs_a_db#" \
     -e "s/PARTICIPANT_LOOKUP_HMAC_KEY=replace-with-64-hex-characters/PARTICIPANT_LOOKUP_HMAC_KEY=$participant_key/" \
     -e "s/FIELD_ENCRYPTION_MASTER_KEY=replace-with-64-hex-characters/FIELD_ENCRYPTION_MASTER_KEY=$field_key/" \

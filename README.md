@@ -54,6 +54,6 @@ make reset-dev-data   # Wipe and re-seed local synthetic databases
 - **Gate 3:** explicit sync-complete watermark, frozen post-checkout summaries, itemized patient confirmation/dispute/decline, timeout state, and late-correction reconfirmation.
 - **Gate 4:** verifier-owned request intake and history, all-candidate search with a ten-result safety cap, strong-identity-only auto-selection, immutable Evidence snapshots, four-dimensional assessments, and the Verifier Web simulator.
 - **Gate 5:** maximum bipartite/quantity-safe item reconciliation, deterministic `R001..R014` findings, claim–encounter/evidence history, ordered advisory-lock finalization, dependency-fingerprint reuse, duplicate signals, and event-driven stale assessment invalidation.
-- **Planned:** human review (Gate 6), second adapter and production hardening (Gate 7).
+- **Implemented:** human review and tamper-evident access/decision audit (Gate 6), plus a second vendor-schema adapter, sensitive-endpoint rate limiting, and guarded local backup/restore (Gate 7).
 
 Run `make bootstrap install up migrate seed`, then open Patient Web on `http://localhost:5173`, SIMRS-A scanner on `http://localhost:5174`, or Verifier Web on `http://localhost:5175`. The public API defaults to `http://localhost:18080` and can be changed with `API_GATEWAY_PORT`. Synthetic browser accounts are `patient01` / `synthetic-patient-01` and `verifier01` / `synthetic-verifier-01`.
