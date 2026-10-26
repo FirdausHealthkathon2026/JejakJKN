@@ -56,6 +56,7 @@ export default function App({accessToken, logout}: Props) {
     <button onClick={() => active && showQr("CHECK_OUT", active.encounter_id)} disabled={!active}>Tampilkan QR Keluar</button>
     {qr && <section aria-label="QR aktif" style={{marginTop: 24}}>
       <QRCodeSVG value={qr.token} size={240}/>
+      <label>Token QR untuk simulator<textarea readOnly value={qr.token} rows={3} style={{display: "block", width: "100%"}}/></label>
       <p>Berlaku sampai {new Date(qr.expires_at).toLocaleTimeString("id-ID")}</p>
     </section>}
     <h2>Riwayat kunjungan</h2><button onClick={refresh}>Muat ulang status</button>

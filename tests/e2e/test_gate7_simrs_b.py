@@ -65,3 +65,11 @@ async def test_simrs_b_alternative_schema_reaches_canonical_evidence() -> None:
             == "JJKN-MED-V1"
         )
         assert recorded.json()["delivery"]["mapping_status"] == "MAPPED"
+        for _ in range(30):
+            status = await client.get(
+                f"http://localhost:8102/api/kunjungan/{encounter_id}/status-sinkronisasi"
+            )
+            if status.status_code == 200 and status.json()["delivered"] == 1:
+                break
+            await asyncio.sleep(0.25)
+        assert status.json()["delivered"] == 1
