@@ -87,7 +87,13 @@ async def execute(run_id: UUID) -> None:
         evaluated: list[dict] = []
         all_snapshots: list[dict] = []
         for candidate in search["candidates"]:
-            snapshot = await clients.pin_snapshot(candidate["encounter_id"])
+            for _ in range(20):
+                snapshot = await clients.pin_snapshot(candidate["encounter_id"])
+                if snapshot.get("attestation", {}).get("checked_out_at"):
+                    break
+                await asyncio.sleep(0.25)
+            else:
+                raise RuntimeError("Evidence checkout snapshot is not ready")
             item_results = reconcile_items(claim_items, snapshot["items"])
             matched = sum(item["match_result"] == "MATCHED" for item in item_results)
             state = (
