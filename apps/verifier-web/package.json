@@ -4,6 +4,19 @@
   "version": "0.1.0",
   "description": "Verifier Portal Simulator — External claim verification request, all-candidate comparison, R001-R014 findings, and human review decisions.",
   "type": "module",
+  "dependencies": {
+    "keycloak-js": "26.2.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.20",
+    "@types/react-dom": "18.3.6",
+    "@vitejs/plugin-react": "4.4.1",
+    "typescript": "5.8.3",
+    "vite": "6.4.5",
+    "vitest": "5.0.5"
+  },
   "scripts": {
     "dev": "vite --port 5175",
     "build": "tsc && vite build",
