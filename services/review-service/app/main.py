@@ -7,12 +7,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from jejakjkn_canonical.problems import Problem, problem_handler
+from jejakjkn_observability import install_observability
 
 from app.api.routes_internal import router as internal_router
 from app.api.routes_public import router
 from app.infrastructure.db import database_ready
 
 app = FastAPI(title="JejakJKN Review Service", version="1.0.0")
+install_observability(app, "review-service")
 app.add_exception_handler(Problem, problem_handler)
 app.add_middleware(
     CORSMiddleware,
