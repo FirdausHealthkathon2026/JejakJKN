@@ -22,6 +22,20 @@ flowchart TB
     PG_REV[("review_db")]
     REDIS[("Redis :6379")]
     RMQ[("RabbitMQ :5672")]
+    PG_A[("simrs_a_db")]
+    PG_B[("simrs_b_db")]
+  end
+
+  subgraph INTEGRATIONS["Synthetic Facility Systems"]
+    SIMA["SIMRS-A adapter/API"]
+    SIMB["SIMRS-B adapter/API"]
+  end
+
+  subgraph OBS["Staging Observability"]
+    PROM["Prometheus"]
+    GRAF["Grafana"]
+    OTEL["OTel Collector"]
+    TEMPO["Tempo"]
   end
 
   GW --> ENC & EVD & VER & REV
@@ -35,4 +49,11 @@ flowchart TB
   NAR --> REV
   VER -. "/internal/v1" .-> ENC & EVD
   REV -. "/internal/v1" .-> VER & EVD
+  SIMA --> PG_A
+  SIMB --> PG_B
+  SIMA & SIMB --> GW
+  ENC & EVD & VER & REV & SIMA & SIMB -. "/metrics" .-> PROM
+  PROM --> GRAF
+  ENC & EVD & VER & REV & SIMA & SIMB -. "OTLP traces" .-> OTEL
+  OTEL --> TEMPO --> GRAF
 ```

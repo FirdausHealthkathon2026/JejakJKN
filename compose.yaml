@@ -363,6 +363,7 @@ services:
     ports:
       - "8102:8102"
     environment:
+      SIMRS_B_DATABASE_URL: postgresql+asyncpg://simrs_b_app:${SIMRS_B_DB_PASSWORD}@postgres:5432/simrs_b_db
       JEJAKJKN_API_URL: http://api-gateway:8080
       KEYCLOAK_TOKEN_URL: http://keycloak:8080/realms/jejakjkn-dev/protocol/openid-connect/token
       SIMRS_CLIENT_SECRET: ${SIMRS_B_CLIENT_SECRET}
@@ -404,13 +405,88 @@ services:
       - internal
 
   simrs-b-demo:
-    profiles: ["simrs-b"]
     build:
       context: apps/simrs-b-demo
     ports:
       - "5176:5176"
     networks:
       - internal
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      encounter-api: {condition: service_healthy}
+      evidence-api: {condition: service_healthy}
+      verification-api: {condition: service_healthy}
+      review-api: {condition: service_healthy}
+    networks: [internal]
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me-local-only}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./infrastructure/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [prometheus]
+    networks: [internal]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.116.1
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./infrastructure/observability/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on: [tempo]
+    networks: [internal]
+
+  tempo:
+    image: grafana/tempo:2.7.1
+    command: ["-config.file=/etc/tempo.yml"]
+    volumes:
+      - ./infrastructure/observability/tempo.yml:/etc/tempo.yml:ro
+    ports:
+      - "3200:3200"
+    networks: [internal]
+
+  restore-postgres:
+    profiles: ["restore-drill"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: restore-drill-only
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    networks: [internal]
+
+  load-test:
+    profiles: ["load"]
+    image: grafana/k6:0.57.0
+    environment:
+      PUBLIC_BASE_URL: http://api-gateway:8080
+    volumes:
+      - ./tests/performance:/scripts:ro
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    networks: [internal]
 
 networks:
   internal:

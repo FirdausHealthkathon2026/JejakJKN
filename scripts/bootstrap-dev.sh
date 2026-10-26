@@ -14,6 +14,12 @@ if [[ ! -f "$secrets_dir/qr-signing-private.pem" ]]; then
   chmod 600 "$secrets_dir/qr-signing-private.pem" "$secrets_dir/qr-signing-public.pem"
 fi
 
+if [[ ! -f "$secrets_dir/release-signing-private.pem" ]]; then
+  openssl genpkey -algorithm ED25519 -out "$secrets_dir/release-signing-private.pem"
+  openssl pkey -in "$secrets_dir/release-signing-private.pem" -pubout -out "$secrets_dir/release-signing-public.pem"
+  chmod 600 "$secrets_dir/release-signing-private.pem" "$secrets_dir/release-signing-public.pem"
+fi
+
 if [[ ! -f "$env_file" ]]; then
   cp "$project_dir/.env.example" "$env_file"
   postgres_password="$(openssl rand -hex 24)"
@@ -55,7 +61,7 @@ if [[ ! -f "$env_file" ]]; then
     -e "s#EVIDENCE_DATABASE_URL=postgresql+asyncpg://evidence_app:change-me-local-only@postgres:5432/evidence_db#EVIDENCE_DATABASE_URL=postgresql+asyncpg://evidence_app:$evidence_db_password@postgres:5432/evidence_db#" \
     -e "s#VERIFICATION_DATABASE_URL=postgresql+asyncpg://verification_app:change-me-local-only@postgres:5432/verification_db#VERIFICATION_DATABASE_URL=postgresql+asyncpg://verification_app:$verification_db_password@postgres:5432/verification_db#" \
     -e "s#REVIEW_DATABASE_URL=postgresql+asyncpg://review_app:change-me-local-only@postgres:5432/review_db#REVIEW_DATABASE_URL=postgresql+asyncpg://review_app:$review_db_password@postgres:5432/review_db#" \
-    -e "s#SIMRS_B_DATABASE_URL=postgresql+asyncpg://simrs_b_app:change-me-local-only@postgres:5432/simrs_b_db#SIMRS_B_DATABASE_URL=postgresql+asyncpg://simrs_b_app:$simrs_b_password@postgres:5432/simrs_b_db#" \
+    -e "s#SIMRS_B_DATABASE_URL=postgresql+asyncpg://simrs_b_app:change-me-local-only@postgres:5432/simrs_b_db#SIMRS_B_DATABASE_URL=postgresql+asyncpg://simrs_b_app:$simrs_b_db_password@postgres:5432/simrs_b_db#" \
     -e "s#SIMRS_A_DATABASE_URL=postgresql+asyncpg://simrs_a_app:change-me-local-only@postgres:5432/simrs_a_db#SIMRS_A_DATABASE_URL=postgresql+asyncpg://simrs_a_app:$simrs_a_db_password@postgres:5432/simrs_a_db#" \
     -e "s/PARTICIPANT_LOOKUP_HMAC_KEY=replace-with-64-hex-characters/PARTICIPANT_LOOKUP_HMAC_KEY=$participant_key/" \
     -e "s/FIELD_ENCRYPTION_MASTER_KEY=replace-with-64-hex-characters/FIELD_ENCRYPTION_MASTER_KEY=$field_key/" \
