@@ -5,12 +5,31 @@ import subprocess
 
 import pytest
 
-pytestmark = pytest.mark.skipif(os.getenv("RUN_LIVE_TESTS") != "1", reason="requires the Compose stack")
+pytestmark = pytest.mark.skipif(
+    os.getenv("RUN_LIVE_TESTS") != "1", reason="requires the Compose stack"
+)
 
 
 def psql(user: str, password: str, database: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["docker", "compose", "exec", "-T", "-e", f"PGPASSWORD={password}", "postgres", "psql", "-h", "127.0.0.1", "-U", user, "-d", database, "-Atc", "SELECT current_database()"],
+        [
+            "docker",
+            "compose",
+            "exec",
+            "-T",
+            "-e",
+            f"PGPASSWORD={password}",
+            "postgres",
+            "psql",
+            "-h",
+            "127.0.0.1",
+            "-U",
+            user,
+            "-d",
+            database,
+            "-Atc",
+            "SELECT current_database()",
+        ],
         capture_output=True,
         text=True,
     )
