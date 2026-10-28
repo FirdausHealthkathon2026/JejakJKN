@@ -17,6 +17,7 @@ from app.infrastructure.models import (
     ItemEvaluation,
     RuleFinding,
     VerificationRequest,
+    VerificationRequestItem,
     VerificationRun,
 )
 
@@ -45,6 +46,16 @@ async def review_package(
             "A completed verification run was not found.",
         )
     request = await session.get(VerificationRequest, run.request_id)
+    req_items_by_ref = {
+        row.item_ref: row
+        for row in (
+            await session.scalars(
+                select(VerificationRequestItem).where(
+                    VerificationRequestItem.request_id == request.id
+                )
+            )
+        ).all()
+    }
     candidates = (
         await session.scalars(
             select(CandidateEvaluation).where(CandidateEvaluation.run_id == run.id)
@@ -95,6 +106,21 @@ async def review_package(
         "items": [
             {
                 "claim_item_ref": row.claim_item_ref,
+                "item_type": req_items_by_ref[row.claim_item_ref].item_type
+                if row.claim_item_ref in req_items_by_ref
+                else None,
+                "code_system": req_items_by_ref[row.claim_item_ref].code_system
+                if row.claim_item_ref in req_items_by_ref
+                else None,
+                "code": req_items_by_ref[row.claim_item_ref].code
+                if row.claim_item_ref in req_items_by_ref
+                else None,
+                "quantity": float(row.claimed_quantity)
+                if row.claimed_quantity is not None
+                else 1.0,
+                "unit": req_items_by_ref[row.claim_item_ref].unit
+                if row.claim_item_ref in req_items_by_ref
+                else None,
                 "match_result": row.match_result,
                 "evidence_version_ref": str(row.evidence_version_ref)
                 if row.evidence_version_ref

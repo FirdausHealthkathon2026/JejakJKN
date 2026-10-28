@@ -44,49 +44,60 @@ def _load_dotenv_if_present() -> None:
 
 
 SAMPLE_PACKAGE = {
-    "participant_number": "SYNTHETIC-10001",
-    "patient_name": "Budi Santoso",
+    "participant_number": "503496113",
+    "patient_name": "Peserta 503496113",
+    "claim_source": "BPJS_FKRTL_PROD",
+    "claim_id": "356881124V002796",
     "data_freshness": "CURRENT",
     "assessment": {
         "encounter_match_status": "UNIQUE_MATCH",
         "identity_assurance": "VERIFIED_PARTICIPANT_ID",
         "evidence_reconciliation_status": "ITEM_MISMATCH",
         "duplicate_assessment_status": "NO_REUSE_FOUND_IN_JEJAKJKN_HISTORY",
-        "patient_confirmation_status": "PARTIALLY_DISPUTED",
+        "patient_confirmation_status": "NOT_APPLICABLE",
         "review_required": True,
         "final_fraud_decision": None,
     },
     "candidates": [
         {
-            "encounter_id": "8cf5dc3e-0d47-4b21-8143-b232452a2e73",
+            "encounter_id": "2666ce8c-c0d0-53b1-a275-894677265898",
             "match_state": "ELIGIBLE_PARTIAL_MATCH",
-            "reasons": ["Procedure matched, medication disputed by patient"],
+            "reasons": ["Diagnosis matched, claimed procedure missing in SIMRS evidence"],
         }
     ],
     "items": [
         {
-            "claim_item_ref": "ITEM-1",
+            "claim_item_ref": "DX-PRIMARY",
+            "item_type": "DIAGNOSIS",
+            "code_system": "ICD-10",
+            "code": "Z03",
+            "quantity": 1,
+            "unit": "1",
             "match_result": "MATCHED",
-            "reason": "Matched procedure PROC-EXAM-EYE",
+            "reason": "Exact canonical match",
         },
         {
-            "claim_item_ref": "ITEM-2",
-            "match_result": "PATIENT_DISPUTED",
-            "reason": "Patient disputed receiving Paracetamol 500 mg (10 tablet)",
+            "claim_item_ref": "PROC-1",
+            "item_type": "PROCEDURE",
+            "code_system": "ICD-9-CM",
+            "code": "3995",
+            "quantity": 1,
+            "unit": "1",
+            "match_result": "MISSING",
+            "reason": "Missing",
         },
     ],
     "findings": [
         {
-            "rule_id": "R005_PATIENT_DISPUTE",
+            "rule_id": "R003_UNSUPPORTED_CLAIM_ITEM",
             "severity": "HIGH",
-            "finding_code": "PATIENT_DISPUTED_CLAIMED_ITEM",
-            "claim_item_ref": "ITEM-2",
+            "finding_code": "CLAIM_ITEM_MISSING_EVIDENCE",
+            "claim_item_ref": "PROC-1",
             "explanation_facts": {
-                "item_ref": "ITEM-2",
-                "patient_response": "DISPUTED",
-                "reason_code": "MEDICATION_NOT_RECEIVED",
+                "item_ref": "PROC-1",
+                "match_result": "MISSING",
             },
-            "limitations": "Sanggahan pasien memerlukan klarifikasi bukti penyerahan farmasi SIMRS, bukan bukti otomatis layanan fiktif.",
+            "limitations": "Ketiadaan bukti di SIMRS memerlukan verifikasi berkas rekam medis fisik atau log mesin tindakan sebelum menyimpulkan upcoding.",
         }
     ],
 }
@@ -94,10 +105,20 @@ SAMPLE_PACKAGE = {
 
 def run_offline_checks() -> None:
     minimized = minimize_package(SAMPLE_PACKAGE)
-    assert "SYNTHETIC-10001" not in json.dumps(minimized)
-    assert "Budi Santoso" not in json.dumps(minimized)
+    dumped_min = json.dumps(minimized, ensure_ascii=False)
+    assert "503496113" not in dumped_min
+    assert "Peserta 503496113" not in dumped_min
+    for banned_ref in ("ITEM-1", "ITEM-2", "DX-PRIMARY", "PROC-1"):
+        assert banned_ref not in dumped_min
+    assert "Hemodialysis" in dumped_min
+    assert "Z03" in dumped_min
+
     det_narrative, det_status, det_digest = narrate(SAMPLE_PACKAGE)
     assert det_status == "VALID" and len(det_digest) == 64
+    dumped_det = json.dumps(det_narrative, ensure_ascii=False)
+    for banned_ref in ("ITEM-1", "ITEM-2", "DX-PRIMARY", "PROC-1"):
+        assert banned_ref not in dumped_det
+    assert "Hemodialysis" in dumped_det
     _, ok = validate_narrative(det_narrative, SAMPLE_PACKAGE)
     assert ok is True
 
@@ -121,13 +142,14 @@ def run_offline_checks() -> None:
                                     + json.dumps(
                                         {
                                             "summary": [
-                                                "Kunjungan cocok unik (UNIQUE_MATCH), namun ITEM-2 disanggah oleh pasien."
+                                                "YANG SESUAI: Kunjungan pasien cocok unik (UNIQUE_MATCH) dan diagnosis klinis ICD-10 Z03 sesuai dengan bukti rekam medis.",
+                                                "YANG TIDAK SESUAI: Tindakan/prosedur medis Hemodialysis (ICD-9-CM 3995) tidak ditemukan buktinya pada rekam medis SIMRS.",
                                             ],
                                             "findings": [
-                                                "R005_PATIENT_DISPUTE [HIGH]: Pasien menyanggah penerimaan obat pada ITEM-2."
+                                                "R003_UNSUPPORTED_CLAIM_ITEM [HIGH]: Tindakan Hemodialysis (ICD-9-CM 3995) pada klaim tidak memiliki bukti pendukung di SIMRS."
                                             ],
                                             "questions": [
-                                                "Apakah bukti penyerahan obat di instalasi farmasi SIMRS sesuai dengan klaim?"
+                                                "Apakah terdapat bukti log mesin hemodialisis atau berkas tindakan di SIMRS?"
                                             ],
                                             "limitations": [
                                                 "Ringkasan AI ini merangkum temuan deterministik dan bukan keputusan fraud."
@@ -142,7 +164,9 @@ def run_offline_checks() -> None:
                 }
 
         class FakeClient:
-            async def post(self, url: str, *, headers: dict, json: dict, timeout: float):
+            async def post(
+                self, url: str, *, headers: dict, json: dict, timeout: float
+            ):
                 return FakeResponse()
 
         narrative, status, digest, method, model_info = _step_sync(
@@ -150,6 +174,8 @@ def run_offline_checks() -> None:
         )
         assert status == "VALID" and method == "LLM" and len(digest) == 64
         assert model_info.startswith("groq:")
+        for banned_ref in ("ITEM-1", "ITEM-2", "DX-PRIMARY", "PROC-1"):
+            assert banned_ref not in json.dumps(narrative)
     finally:
         if prev_key is None:
             os.environ.pop("GROQ_API_KEY", None)
@@ -160,7 +186,9 @@ def run_offline_checks() -> None:
         else:
             os.environ["NARRATIVE_PROVIDER"] = prev_provider
 
-    print("[OK] Offline narrator, PII minimization, mock Groq LLM, and schema guardrails passed.")
+    print(
+        "[OK] Offline narrator, PII minimization, seeded ICD-10/ICD-9-CM catalog lookup, and schema guardrails passed."
+    )
 
 
 def main() -> None:
@@ -176,16 +204,21 @@ def main() -> None:
         return
 
     os.environ.setdefault("NARRATIVE_PROVIDER", "groq")
-    print("[INFO] Calling Groq Chat Completions API...")
+    print("[INFO] Calling Groq Chat Completions API with seeded DB claim sample...")
 
     api_url, model_name, headers, payload, timeout_seconds, digest = _build_request(
         SAMPLE_PACKAGE
     )
     try:
         raw_body = _post_urllib(api_url, headers, payload, timeout_seconds)
-        print("[DEBUG] Raw Groq message:", raw_body["choices"][0]["message"]["content"])
+        print(
+            "[DEBUG] Raw Groq message:",
+            raw_body["choices"][0]["message"]["content"],
+        )
     except urllib.error.HTTPError as e:
-        print(f"[DEBUG] HTTPError {e.code}: {e.read().decode('utf-8', errors='replace')}")
+        print(
+            f"[DEBUG] HTTPError {e.code}: {e.read().decode('utf-8', errors='replace')}"
+        )
     except Exception as e:
         print(f"[DEBUG] Exception {type(e).__name__}: {e}")
 
@@ -209,4 +242,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
