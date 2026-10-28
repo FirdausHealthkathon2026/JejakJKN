@@ -81,12 +81,12 @@ def test_validate_narrative_rejects_banned_phrases_and_hallucinated_rules() -> N
 
 
 @pytest.mark.asyncio
-async def test_generate_narrative_uses_hf_llm_when_token_configured(
+async def test_generate_narrative_uses_groq_llm_when_api_key_configured(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("HF_TOKEN", "hf_test_token_123")
-    monkeypatch.setenv("NARRATIVE_PROVIDER", "huggingface")
-    monkeypatch.setenv("HF_MODEL", "deepseek-ai/DeepSeek-V3-0324")
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_test_token_123")
+    monkeypatch.setenv("NARRATIVE_PROVIDER", "groq")
+    monkeypatch.setenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
     class FakeResponse:
         def raise_for_status(self) -> None:
@@ -130,11 +130,11 @@ async def test_generate_narrative_uses_hf_llm_when_token_configured(
     )
     assert status == "VALID"
     assert method == "LLM"
-    assert model_info == "hf:deepseek-ai/DeepSeek-V3-0324"
+    assert model_info == "groq:llama-3.3-70b-versatile"
     assert len(digest) == 64
     assert "UNIQUE_MATCH" in narrative["summary"][0]
     assert client.captured_headers is not None
-    assert client.captured_headers["Authorization"] == "Bearer hf_test_token_123"
+    assert client.captured_headers["Authorization"] == "Bearer gsk_test_token_123"
     assert "Budi Santoso" not in str(client.captured_json)
     assert "SYNTHETIC-10001" not in str(client.captured_json)
 
@@ -143,8 +143,8 @@ async def test_generate_narrative_uses_hf_llm_when_token_configured(
 async def test_generate_narrative_falls_back_to_template_on_llm_error_or_banned_verdict(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("HF_TOKEN", "hf_test_token_123")
-    monkeypatch.setenv("NARRATIVE_PROVIDER", "huggingface")
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_test_token_123")
+    monkeypatch.setenv("NARRATIVE_PROVIDER", "groq")
 
     class BadVerdictResponse:
         def raise_for_status(self) -> None:
