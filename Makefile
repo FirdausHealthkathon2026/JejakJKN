@@ -1,4 +1,4 @@
-.PHONY: bootstrap install up migrate seed test-unit test-contract test-integration test-e2e test-security test-concurrency test-fault test-load lint backup-local restore-local restore-drill release verify-release down reset-dev-data
+.PHONY: bootstrap install up migrate seed seed-benchmark test-benchmark test-unit test-contract test-integration test-e2e test-security test-concurrency test-fault test-load lint backup-local restore-local restore-drill release verify-release down reset-dev-data
 
 bootstrap:
 	bash scripts/bootstrap-dev.sh
@@ -19,6 +19,13 @@ migrate:
 
 seed:
 	docker compose run --rm encounter-api python -m app.seed
+
+seed-benchmark:
+	docker compose exec -T postgres psql -U encounter_app -d encounter_db < scripts/generated/seed_encounter_1000.sql
+	docker compose exec -T postgres psql -U evidence_app -d evidence_db < scripts/generated/seed_evidence_1000.sql
+
+test-benchmark:
+	python3 scripts/test-1000-claims.py --limit 1000 --workers 8
 
 test-unit:
 	PYTHONPATH=.deps:libs/python-observability python3 -m pytest services/encounter-service/tests/unit tests/security/test_redaction_unit.py
