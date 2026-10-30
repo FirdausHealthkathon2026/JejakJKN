@@ -14,11 +14,12 @@ from app.api.schemas import ExceptionRequest, IssueQrRequest, RedeemQrRequest
 from app.config import Settings
 from app.domain.entities import EncounterStatus, PresenceStatus
 from app.domain.policies import require_checkout_eligible
-from app.infrastructure.crypto import QrSigner
+from app.infrastructure.crypto import QrSigner, decrypt_field
 from app.infrastructure.models import (
     Encounter,
     EncounterException,
     OutboxEvent,
+    Patient,
     QrRedemptionReceipt,
 )
 from app.infrastructure.redis_qr import RedisQrStore, nonce_digest
@@ -250,6 +251,18 @@ class EncounterApplication:
 
         await self.qr_store.commit(nonce)
         return response, reservation.state == "IDEMPOTENT_RETRY"
+
+    async def participant_number(self, encounter_id: UUID) -> str | None:
+        """Return the claim identifier to the scanning facility; never stored in receipts."""
+        encounter = await self.repo.encounter(encounter_id)
+        patient = await self.session.get(Patient, encounter.patient_id) if encounter else None
+        if not patient:
+            return None
+        return decrypt_field(
+            patient.participant_number_ciphertext,
+            self.settings.field_encryption_master_key,
+            f"patients:{patient.id}:participant_number_ciphertext:v1",
+        )
 
     async def record_exception(
         self, encounter_id: UUID, request: ExceptionRequest, principal: Principal

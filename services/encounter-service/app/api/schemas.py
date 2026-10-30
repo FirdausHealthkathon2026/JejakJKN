@@ -40,6 +40,7 @@ class CheckInResponse(BaseModel):
     check_in_status: Literal["QR_VERIFIED"] = "QR_VERIFIED"
     encounter_status: Literal["OPEN"] = "OPEN"
     created_at: datetime
+    participant_number: str | None = None
 
 
 class CheckOutResponse(BaseModel):

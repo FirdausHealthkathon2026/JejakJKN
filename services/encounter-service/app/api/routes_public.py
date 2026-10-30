@@ -126,7 +126,8 @@ async def check_in(
     result, replay = await app.redeem(body, str(idempotency_key), principal, "CHECK_IN")
     if replay:
         response.status_code = 200
-    return result
+    participant_number = await app.participant_number(UUID(result["encounter_id"]))
+    return result | {"participant_number": participant_number}
 
 
 @router.post("/integrations/qr/check-out", response_model=CheckOutResponse)

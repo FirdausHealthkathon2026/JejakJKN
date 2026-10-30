@@ -34,6 +34,14 @@ def encrypt_field(value: str, key_hex: str, aad: str) -> bytes:
     return nonce + ciphertext
 
 
+def decrypt_field(value: bytes, key_hex: str, aad: str) -> str:
+    return (
+        AESGCM(bytes.fromhex(key_hex))
+        .decrypt(value[:12], value[12:], aad.encode())
+        .decode()
+    )
+
+
 class QrSigner:
     issuer = "jejakjkn-encounter-service"
     audience = "jejakjkn-qr-redemption"
