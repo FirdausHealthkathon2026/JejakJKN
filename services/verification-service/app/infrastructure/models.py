@@ -85,6 +85,7 @@ class VerificationRequestItem(Base):
     code: Mapped[str] = mapped_column(String(64))
     quantity: Mapped[Decimal] = mapped_column(Numeric(12, 4), default=1)
     unit: Mapped[str] = mapped_column(String(32))
+    display: Mapped[str | None] = mapped_column(String(255))
     service_date_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     service_date_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

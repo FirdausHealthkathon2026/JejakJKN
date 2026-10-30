@@ -127,6 +127,9 @@ class VerificationApplication:
                     "patient_confirmation_status": row.patient_confirmation_status,
                     "match_state": row.match_state,
                     "reasons": row.reasons_json,
+                    "started_at": row.score_facts_json.get("started_at"),
+                    "ended_at": row.score_facts_json.get("ended_at"),
+                    "service_type": row.score_facts_json.get("service_type"),
                 }
                 for row in await self.repo.candidates(run.id)
             ]
@@ -189,6 +192,36 @@ class VerificationApplication:
         )
         await self.session.commit()
         return _queued(request, run), False
+
+    async def worklist(self, principal: Principal, limit: int) -> list[dict]:
+        rows = await self.repo.latest_per_claim(_organization(principal), limit)
+        findings = await self.repo.finding_codes([run.id for _, run in rows])
+        return [
+            _assessment(request, run) | {"finding_codes": findings.get(run.id, [])}
+            for request, run in rows
+        ]
+
+    async def item_results(self, request_id: UUID, principal: Principal) -> list[dict]:
+        request = await self._owned(request_id, principal)
+        run = await self.repo.run(request)
+        if not run:
+            return []
+        items = {row.item_ref: row for row in await self.repo.items(request.id)}
+        return [
+            {
+                "claim_item_ref": row.claim_item_ref,
+                "match_result": row.match_result,
+                "claimed_quantity": row.claimed_quantity,
+                "allocated_evidence_quantity": row.allocated_evidence_quantity,
+                "unit": items[row.claim_item_ref].unit
+                if row.claim_item_ref in items
+                else None,
+                "item_type": items[row.claim_item_ref].item_type
+                if row.claim_item_ref in items
+                else None,
+            }
+            for row in await self.repo.item_evaluations(run.id)
+        ]
 
     async def history(
         self, claim_source: str, claim_id: str, principal: Principal

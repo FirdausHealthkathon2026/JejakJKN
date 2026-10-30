@@ -55,6 +55,7 @@ class ClaimItem(BaseModel):
     code: str = Field(min_length=1, max_length=64)
     quantity: Decimal = Field(default=Decimal("1"), gt=0)
     unit: str = Field(default="1", min_length=1, max_length=32)
+    display: str | None = Field(default=None, max_length=255)
     service_date_start: datetime | None = None
     service_date_end: datetime | None = None
 
@@ -110,6 +111,7 @@ class AssessmentView(BaseModel):
     completed_at: datetime | None
     candidates_url: str
     findings_url: str
+    finding_codes: list[str] = Field(default_factory=list)
 
 
 class CandidateView(BaseModel):
@@ -122,6 +124,18 @@ class CandidateView(BaseModel):
     patient_confirmation_status: str
     match_state: str
     reasons: list[str]
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
+    service_type: str | None = None
+
+
+class ItemResultView(BaseModel):
+    claim_item_ref: str
+    match_result: str
+    claimed_quantity: Decimal
+    allocated_evidence_quantity: Decimal | None
+    unit: str | None
+    item_type: str | None
 
 
 class FindingView(BaseModel):

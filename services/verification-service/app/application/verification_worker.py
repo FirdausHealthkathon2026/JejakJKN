@@ -233,6 +233,9 @@ async def execute(run_id: UUID) -> None:
                         ),
                         "patient_id": candidate["patient_id"],
                         "document_fingerprints": document_fingerprints,
+                        "started_at": candidate.get("started_at"),
+                        "ended_at": candidate.get("ended_at"),
+                        "service_type": candidate.get("service_type"),
                     },
                     reasons_json=[
                         row["match_result"]
@@ -465,7 +468,14 @@ async def _finalize(
         run.input_snapshot_digest,
         run.dependency_fingerprint,
         run.ended_at,
-    ) = bool(findings), snapshot_digest, dependency_fingerprint, now
+    ) = (
+        # INFO signals such as "patient has not answered" stay on record without a review case.
+        match_status == "AMBIGUOUS_MATCH"
+        or any(finding["severity"] != "INFO" for finding in findings),
+        snapshot_digest,
+        dependency_fingerprint,
+        now,
+    )
     event_type = (
         "verification.duplicate_suspected.v1"
         if conflicting or reused_evidence

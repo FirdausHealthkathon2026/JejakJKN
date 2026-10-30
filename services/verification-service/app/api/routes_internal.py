@@ -115,6 +115,9 @@ async def review_package(
                 "code": req_items_by_ref[row.claim_item_ref].code
                 if row.claim_item_ref in req_items_by_ref
                 else None,
+                "display": req_items_by_ref[row.claim_item_ref].display
+                if row.claim_item_ref in req_items_by_ref
+                else None,
                 "quantity": float(row.claimed_quantity)
                 if row.claimed_quantity is not None
                 else 1.0,

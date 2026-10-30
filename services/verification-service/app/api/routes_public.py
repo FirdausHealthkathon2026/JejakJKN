@@ -3,7 +3,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Response
+from fastapi import APIRouter, Depends, Header, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from jejakjkn_auth.dependencies import (
@@ -15,6 +15,7 @@ from jejakjkn_auth.jwt_verifier import Principal
 
 from app.api.schemas import (
     AssessmentView,
+    ItemResultView,
     CandidateView,
     FindingView,
     QueuedVerification,
@@ -56,6 +57,15 @@ async def submit(
     return result
 
 
+@router.get("", response_model=list[AssessmentView])
+async def worklist(
+    limit: Annotated[int, Query(ge=1, le=5000)] = 2000,
+    principal: Principal = Depends(reader),
+    app: VerificationApplication = Depends(application),
+) -> list[dict]:
+    return await app.worklist(principal, limit)
+
+
 @router.get("/history", response_model=list[AssessmentView])
 async def history(
     claim_source: str,
@@ -82,6 +92,15 @@ async def candidates(
     app: VerificationApplication = Depends(application),
 ) -> list[dict]:
     return await app.candidates(verification_id, principal)
+
+
+@router.get("/{verification_id}/items", response_model=list[ItemResultView])
+async def item_results(
+    verification_id: UUID,
+    principal: Principal = Depends(reader),
+    app: VerificationApplication = Depends(application),
+) -> list[dict]:
+    return await app.item_results(verification_id, principal)
 
 
 @router.get("/{verification_id}/findings", response_model=list[FindingView])
