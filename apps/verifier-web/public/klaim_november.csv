@@ -1,0 +1,4 @@
+nomor_klaim,revisi_klaim,nomor_peserta,nama_pasien,kode_faskes,tanggal_mulai,tanggal_selesai,jenis_layanan,sistem_kode,kode,jumlah,satuan,nominal_klaim
+356820524V002956,1,18289010,,HOSP-DEMO-001,2024-05-07,2024-05-07,Diagnosis,ICD-10,K30,1,,173900
+311201124V000318,1,114332031,,HOSP-DEMO-002,2024-11-05,2024-11-02,Diagnosis,ICD-10,G60,1,,198000
+311201124V000331,1,114332031,,HOSP-DEMO-002,2024-03-05,2024-03-05,Tindakan,ICD-9-CM,8906,0,,
