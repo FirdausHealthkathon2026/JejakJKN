@@ -26,6 +26,12 @@ class SimrsBVisit(Base):
     __tablename__ = "simrs_b_visits"
 
     encounter_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
+    participant_number: Mapped[str | None] = mapped_column(String(64))
+    external_visit_reference: Mapped[str | None] = mapped_column(String(128))
+    status: Mapped[str] = mapped_column(String(32), default="OPEN")
+    presence_status: Mapped[str] = mapped_column(String(32), default="QR_VERIFIED")
+    checked_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    checked_out_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     next_source_sequence: Mapped[int] = mapped_column(Integer, default=1)
     sync_status: Mapped[str] = mapped_column(String(32), default="LOCAL_ONLY")
     last_error: Mapped[str | None] = mapped_column(Text)

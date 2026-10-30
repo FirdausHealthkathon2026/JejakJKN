@@ -116,16 +116,144 @@ async def check_in(
     result = await _scan("check-in", body, idempotency_key)
     encounter_id = UUID(result["encounter_id"])
     if not await session.get(SimrsVisit, encounter_id):
-        session.add(SimrsVisit(encounter_id=encounter_id))
+        session.add(
+            SimrsVisit(
+                encounter_id=encounter_id,
+                participant_number=result.get("participant_number"),
+                external_visit_reference=body.external_visit_reference,
+                checked_in_at=datetime.fromisoformat(result["created_at"]),
+            )
+        )
         await session.commit()
     return result
 
 
 @router.post("/scan/check-out")
 async def check_out(
-    body: ScanRequest, idempotency_key: UUID = Header(alias="Idempotency-Key")
+    body: ScanRequest,
+    idempotency_key: UUID = Header(alias="Idempotency-Key"),
+    session: AsyncSession = Depends(get_session),
 ) -> dict:
-    return await _scan("check-out", body, idempotency_key)
+    result = await _scan("check-out", body, idempotency_key)
+    visit = await session.get(SimrsVisit, UUID(result["encounter_id"]))
+    if visit:
+        visit.status = "CHECKED_OUT"
+        visit.checked_out_at = datetime.fromisoformat(result["checked_out_at"])
+        await session.commit()
+    return result
+
+
+async def _visit_view(session: AsyncSession, visit: SimrsVisit) -> dict:
+    counts = dict(
+        (
+            await session.execute(
+                select(SyncOutbox.delivery_status, func.count())
+                .where(SyncOutbox.encounter_id == visit.encounter_id)
+                .group_by(SyncOutbox.delivery_status)
+            )
+        ).all()
+    )
+    records = list(
+        (
+            await session.scalars(
+                select(ClinicalRecord)
+                .where(ClinicalRecord.encounter_id == visit.encounter_id)
+                .order_by(ClinicalRecord.created_at.desc())
+            )
+        ).all()
+    )
+    versions = list(
+        (
+            await session.scalars(
+                select(ClinicalVersion)
+                .where(ClinicalVersion.record_id.in_([row.id for row in records]))
+                .order_by(ClinicalVersion.version)
+            )
+        ).all()
+    )
+    deliveries = list(
+        (
+            await session.scalars(
+                select(SyncOutbox)
+                .where(SyncOutbox.encounter_id == visit.encounter_id)
+                .order_by(SyncOutbox.created_at.desc())
+            )
+        ).all()
+    )
+    return {
+        "encounter_id": visit.encounter_id,
+        "participant_number": visit.participant_number,
+        "external_visit_reference": visit.external_visit_reference,
+        "status": visit.status,
+        "presence_status": visit.presence_status,
+        "checked_in_at": visit.checked_in_at,
+        "checked_out_at": visit.checked_out_at,
+        "sync_status": visit.sync_status,
+        "last_error": visit.last_error,
+        "pending": counts.get("PENDING", 0),
+        "failed": counts.get("FAILED", 0),
+        "delivered": counts.get("DELIVERED", 0),
+        "deliveries": [
+            {
+                "id": row.id,
+                "target_path": row.target_path,
+                "status": row.delivery_status,
+                "attempts": row.attempts,
+                "last_error": row.last_error,
+                "created_at": row.created_at,
+                "delivered_at": row.delivered_at,
+                "content": row.payload.get("content"),
+                "event_type": row.payload.get("event_type"),
+                "record_version": row.payload.get("record_version"),
+            }
+            for row in deliveries
+        ],
+        "records": [
+            {
+                "record_id": row.id,
+                "event_type": row.event_type,
+                "external_record_id": row.external_record_id,
+                "version": row.current_version,
+                "status": row.status,
+                "created_at": row.created_at,
+                "history": [
+                    {
+                        "version": item.version,
+                        "action": item.action,
+                        "created_at": item.created_at,
+                        "content": item.payload.get("content"),
+                        "note": item.payload.get("change_reason")
+                        or item.payload.get("cancel_reason"),
+                    }
+                    for item in versions
+                    if item.record_id == row.id
+                ],
+            }
+            for row in records
+        ],
+    }
+
+
+@router.get("/visits")
+async def list_visits(session: AsyncSession = Depends(get_session)) -> list[dict]:
+    visits = (
+        await session.scalars(
+            select(SimrsVisit).order_by(SimrsVisit.created_at.desc()).limit(50)
+        )
+    ).all()
+    return [await _visit_view(session, visit) for visit in visits]
+
+
+@router.post("/deliveries/{delivery_id}/retry")
+async def retry_delivery(
+    delivery_id: UUID, session: AsyncSession = Depends(get_session)
+) -> dict:
+    row = await session.get(SyncOutbox, delivery_id, with_for_update=True)
+    if not row:
+        raise HTTPException(404, "Delivery not found")
+    row.delivery_status, row.last_error = "PENDING", None
+    await session.commit()
+    return {"id": row.id, "status": row.delivery_status}
 
 
 @router.post("/visits/{encounter_id}/clinical-events", status_code=201)
