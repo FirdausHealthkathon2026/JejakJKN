@@ -3,6 +3,7 @@ import {renderToString} from "react-dom/server";
 import {describe, expect, it} from "vitest";
 import App from "./App";
 import {View} from "./design/View";
+import {validateQrImage} from "@jejakjkn/web-qr-scanner";
 
 const VISIT = {
   id: "e1", pn: "SYNTHETIC-10001", ref: "VISIT-1", enc: "e1aaaaaa-0000", startedAt: "2026-10-30T02:00:00Z", endedAt: "2026-10-30T03:00:00Z", inT: "09.00", outT: "10.00",
@@ -30,5 +31,19 @@ describe("simrs a screens", () => {
     ["empty visit", {screen: "visit"}], ["correct dialog", {...loaded, screen: "visit", dialog: {type: "correct", rid: "r1", cs: "LOCAL", code: "MED-1", display: "x", qty: "1", unit: "tablet", reason: ""}}],
   ])("%s", (_, state) => {
     expect(render(state)).toContain("<");
+  });
+
+  it("renders camera and gallery controls on the scan screen", () => {
+    const app = new App({});
+    Object.assign(app.state, {screen: "scan"});
+    app.setState = () => undefined;
+    expect(renderToString(app.render())).toContain("Buka kamera");
+    expect(renderToString(app.render())).toContain("Pilih dari galeri");
+  });
+
+  it("rejects unsafe gallery images before decoding", () => {
+    expect(validateQrImage({type: "image/heic", size: 10} as File, 100, 100)).toContain("JPEG");
+    expect(validateQrImage({type: "image/png", size: 11 * 1024 * 1024} as File, 100, 100)).toContain("10 MiB");
+    expect(validateQrImage({type: "image/png", size: 10} as File, 5000, 5000)).toContain("20 megapiksel");
   });
 });

@@ -153,12 +153,11 @@ export async function loadAll() {
   return {visits: mapped, bclaims, deliveries: mapped.flatMap((v) => v.deliveries)};
 }
 
-export function scan(kind: "check-in" | "check-out", qrToken: string) {
-  const reference = kind === "check-in" ? `VISIT-${Date.now()}` : undefined;
+export function scan(kind: "check-in" | "check-out", qrToken: string, attempt: {idempotencyKey: string; reference?: string}) {
   return request<{encounter_id: string}>(`/scan/${kind}`, {
     method: "POST",
-    headers: {"Idempotency-Key": crypto.randomUUID()},
-    body: JSON.stringify({qr_token: qrToken, scanner_external_id: "SIMRS-A-SCANNER-01", external_visit_reference: reference}),
+    headers: {"Idempotency-Key": attempt.idempotencyKey},
+    body: JSON.stringify({qr_token: qrToken, scanner_external_id: "SIMRS-A-SCANNER-01", external_visit_reference: attempt.reference}),
   });
 }
 

@@ -427,7 +427,8 @@ services:
 
   simrs-a-web:
     build:
-      context: apps/simrs-a-web
+      context: .
+      dockerfile: apps/simrs-a-web/Dockerfile
     ports:
       - "5174:5174"
     networks:
@@ -443,7 +444,8 @@ services:
 
   simrs-b-demo:
     build:
-      context: apps/simrs-b-demo
+      context: .
+      dockerfile: apps/simrs-b-demo/Dockerfile
     ports:
       - "5176:5176"
     networks:

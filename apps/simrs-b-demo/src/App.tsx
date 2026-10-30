@@ -1,11 +1,15 @@
 // @ts-nocheck -- logic ported verbatim from the design canvas; data comes from src/api.
 import {Component} from "react";
+import {QrScannerPanel} from "@jejakjkn/web-qr-scanner";
 import {addRecord, completeSync, fmtLongDate, loadAll, retryDelivery, scan, submitClaim} from "./api/client";
 import {View} from "./design/View";
 
 const EMPTY_VISIT = {id: '', ref: '', inT: '', outT: '', status: 'OPEN', presence: 'QR', records: [], pending: 0, failed: 0, delivered: 0, sync: 'LOCAL_ONLY', marking: false};
 
 export default class App extends Component<object, any> {
+  scanPending = false;
+  scanAttempt = null;
+
   catalogAll() {
     return {
       TINDAKAN: [['RJ-DOK-001', 'Konsultasi dokter umum', 'layanan', 1, 'layanan'], ['MATA-01', 'Pemeriksaan mata', 'layanan', 1, 'layanan'], ['MATA-SLIT', 'Biomikroskopi slit lamp', 'layanan', 1, 'layanan'], ['JANTUNG-EKG', 'Elektrokardiografi', 'layanan', 1, 'layanan']],
@@ -29,7 +33,32 @@ export default class App extends Component<object, any> {
     screen: 'list', mode: 'IN', token: '', refInput: '', result: null, visits: [], sel: null,
     tab: 'TINDAKAN', pick: null, qty: '1', manual: false, manualCode: '',
     excPhase: 'IN', exc: this.emptyExc(), open: {}, dialog: null, deliveries: [], dFilter: 'ALL',
-    bclaims: [], draft: null, cid: null, justSent: false
+    bclaims: [], draft: null, cid: null, justSent: false, submitting: false
+  };
+
+  submitScan = async (rawToken) => {
+    const token = rawToken.trim();
+    if (token.length < 32 || this.scanPending) return;
+    const mode = this.state.mode;
+    const requestedReference = this.state.refInput.trim();
+    const fingerprint = mode + ':' + token + ':' + requestedReference;
+    if (!this.scanAttempt || this.scanAttempt.fingerprint !== fingerprint) {
+      this.scanAttempt = {fingerprint, idempotencyKey: crypto.randomUUID(), reference: requestedReference || 'RJ-' + Date.now()};
+    }
+    this.scanPending = true;
+    this.setState({submitting: true, token, result: null});
+    try {
+      const scanned = await scan(mode, token, this.scanAttempt.reference, this.scanAttempt.idempotencyKey);
+      await this.load();
+      this.scanAttempt = null;
+      this.setState({sel: scanned.encounter_id, token: '', result: {kind: 'ok', vid: scanned.encounter_id, mode}});
+    } catch (error) {
+      const code = ['QR_ALREADY_CONSUMED', 'QR_TOKEN_EXPIRED', 'WRONG_QR_PURPOSE', 'INVALID_ENCOUNTER_STATE', 'INVALID_QR_SIGNATURE', 'INVALID_QR_TOKEN', 'FACILITY_MISMATCH'].includes(error.code) ? error.code : 'DOWN';
+      this.setState({result: {kind: code}});
+    } finally {
+      this.scanPending = false;
+      this.setState({submitting: false});
+    }
   };
 
   componentDidMount() {
@@ -39,6 +68,7 @@ export default class App extends Component<object, any> {
 
   componentWillUnmount() {
     clearInterval(this.poll);
+    this.scanAttempt = null;
   }
 
   describe = (r) => {
@@ -109,28 +139,26 @@ export default class App extends Component<object, any> {
     const RES = {
       QR_ALREADY_CONSUMED: ['QR sudah dipakai', 'QR ini sudah pernah dipindai. Minta pasien menampilkan QR baru.'],
       QR_TOKEN_EXPIRED: ['QR sudah kedaluwarsa', 'QR hanya berlaku 60 detik. Minta pasien menampilkan QR baru.'],
+      WRONG_QR_PURPOSE: ['Jenis QR tidak sesuai', s.mode === 'IN' ? 'Minta pasien menunjukkan QR Masuk, atau pilih mode QR Keluar.' : 'Minta pasien menunjukkan QR Keluar, atau pilih mode QR Masuk.'],
+      INVALID_ENCOUNTER_STATE: ['Status kunjungan tidak sesuai', 'Kunjungan untuk QR ini tidak dapat diproses pada tahap sekarang.'],
+      INVALID_QR_SIGNATURE: ['QR tidak sah', 'QR tidak memiliki tanda tangan JejakJKN yang valid. Minta pasien membuat QR baru.'],
+      INVALID_QR_TOKEN: ['QR tidak valid', 'Isi QR tidak dikenali JejakJKN. Minta pasien membuat QR baru.'],
+      FACILITY_MISMATCH: ['QR untuk faskes lain', 'QR ini tidak diterbitkan untuk faskes ini.'],
       DOWN: ['JejakJKN tidak dapat dihubungi', 'Lanjutkan pelayanan. Coba pindai lagi beberapa saat lagi, atau catat pengecualian.']
     };
     const runScan = async (code) => {
       if (code !== 'ok') { this.setState({ result: { kind: code } }); return; }
-      if (s.token.trim().length < 32) return;
-      try {
-        const scanned = await scan(s.mode, s.token.trim(), s.refInput.trim() || 'RJ-' + Date.now());
-        await this.load();
-        this.setState({ sel: scanned.encounter_id, token: '', result: { kind: 'ok', vid: scanned.encounter_id, mode: s.mode } });
-      } catch (error) {
-        this.setState({ result: { kind: RES[error.code] ? error.code : 'DOWN' } });
-      }
+      this.submitScan(s.token);
     };
     let res = { empty: true, show: false, bar: tone.neutral.bar };
     if (s.result) {
       if (s.result.kind === 'ok') {
-        const rv = visits.find((v) => v.id === s.result.vid) || visits[0];
+        const rv = visits.find((v) => v.id === s.result.vid);
         const isIn = s.result.mode === 'IN';
         res = { empty: false, show: true, ok: true, icon: '✓', fg: tone.ok.fg, bar: tone.ok.bar,
           title: isIn ? 'Masuk berhasil' : 'Keluar berhasil',
-          text: (isIn ? 'Kunjungan ' + rv.ref + ' dibuat pukul ' + rv.inT + '.' : 'Kunjungan ' + rv.ref + ' ditutup pukul ' + rv.outT + '.') + ' Kunjungan sudah terhubung ke JejakJKN.',
-          open: () => this.setState({ screen: 'visit', sel: rv.id, tab: 'TINDAKAN', pick: null, qty: '1', manual: false, open: {} }) };
+          text: rv ? (isIn ? 'Kunjungan ' + rv.ref + ' dibuat pukul ' + rv.inT + '.' : 'Kunjungan ' + rv.ref + ' ditutup pukul ' + rv.outT + '.') + ' Kunjungan sudah terhubung ke JejakJKN.' : 'QR berhasil diproses untuk kunjungan ' + s.result.vid + '. Muat ulang daftar kunjungan untuk membuka detail.',
+          open: () => rv ? this.setState({ screen: 'visit', sel: rv.id, tab: 'TINDAKAN', pick: null, qty: '1', manual: false, open: {} }) : this.load() };
       } else {
         const e = RES[s.result.kind];
         res = { empty: false, show: true, ok: false, icon: '!', fg: tone.bad.fg, bar: tone.bad.bar, title: e[0], text: e[1] };
@@ -367,7 +395,7 @@ export default class App extends Component<object, any> {
         const on = s.screen === id || (id === 'list' && s.screen === 'visit') || (id === 'scan' && s.screen === 'exc' && excIn) || (id === 'claims' && (s.screen === 'claimForm' || s.screen === 'claimView'));
         return { label, border: on ? '#7FB2E0' : 'transparent', fg: on ? '#FFFFFF' : '#B7C4D1', current: on ? 'page' : undefined,
           hasBadge: id === 'sync' && problems > 0, badge: problems,
-          go: () => this.setState({ screen: id, result: null, token: '', dialog: null, justSent: false }) };
+          go: () => { this.scanAttempt = null; this.setState({ screen: id, result: null, token: '', dialog: null, justSent: false }); } };
       }),
       todayText: new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()),
       bc, cfm, cv,
@@ -375,19 +403,19 @@ export default class App extends Component<object, any> {
       goClaims: () => this.setState({ screen: 'claims', dialog: null, justSent: false }),
       goSync: () => this.setState({ screen: 'sync', dialog: null }),
       isList: s.screen === 'list', isScan: s.screen === 'scan', isVisit: s.screen === 'visit', isExc: s.screen === 'exc', isSync: s.screen === 'sync',
-      goList: () => this.setState({ screen: 'list', dialog: null }),
-      goScan: () => this.setState({ screen: 'scan', result: null, token: '' }),
+      goList: () => { this.scanAttempt = null; this.setState({ screen: 'list', dialog: null, token: '' }); },
+      goScan: () => { this.scanAttempt = null; this.setState({ screen: 'scan', result: null, token: '' }); },
       listSummary: visits.length + ' kunjungan · ' + openN + ' sedang dilayani',
       rows,
 
       modeName: s.mode === 'IN' ? 'QR Masuk' : 'QR Keluar', isIn: s.mode === 'IN',
       inPressed: String(s.mode === 'IN'), outPressed: String(s.mode === 'OUT'),
       inBg: sIn.bg, inFg: sIn.fg, outBg: sOut.bg, outFg: sOut.fg,
-      modeIn: () => this.setState({ mode: 'IN', result: null }),
-      modeOut: () => this.setState({ mode: 'OUT', result: null }),
-      token: s.token, setToken: (e) => this.setState({ token: e.target.value }),
-      refInput: s.refInput, setRef: (e) => this.setState({ refInput: e.target.value }),
-      noToken: s.token.trim().length < 32,
+      modeIn: () => { if (!s.submitting) { this.scanAttempt = null; this.setState({ mode: 'IN', result: null, token: '' }); } },
+      modeOut: () => { if (!s.submitting) { this.scanAttempt = null; this.setState({ mode: 'OUT', result: null, token: '' }); } },
+      token: s.token, setToken: (e) => { if (!s.submitting) this.setState({ token: e.target.value }); },
+      refInput: s.refInput, setRef: (e) => { if (!s.submitting) this.setState({ refInput: e.target.value }); },
+      noToken: s.token.trim().length < 32 || s.submitting,
       process: () => runScan('ok'),
       demo: [['ok', 'Berhasil'], ['QR_ALREADY_CONSUMED', 'Sudah dipakai'], ['QR_TOKEN_EXPIRED', 'Kedaluwarsa'], ['DOWN', 'Tidak terhubung']].map(([k, label]) => ({ label, run: () => runScan(k) })),
       res,
@@ -416,7 +444,20 @@ export default class App extends Component<object, any> {
 
       dialogOpen: !!d, dlg,
       closeDialog: () => this.setState({ dialog: null }),
-      dl
+      dl,
+
+      scannerSlot: s.screen === 'scan' ? (
+        <QrScannerPanel
+          key={s.screen + ':' + s.mode}
+          disabled={s.submitting}
+          resetKey={s.screen + ':' + s.mode}
+          modeName={s.mode === 'IN' ? 'QR Masuk' : 'QR Keluar'}
+          onDecoded={(token) => this.submitScan(token)}
+          onError={() => undefined}
+          viewfinderHeight={170}
+          borderRadius={6}
+        />
+      ) : null
     };
   }
 

@@ -5,6 +5,7 @@
   "description": "SIMRS-A Web Simulator — Hospital queue, QR scanner, clinical/pharmacy recording, and adapter sync monitor.",
   "type": "module",
   "dependencies": {
+    "@jejakjkn/web-qr-scanner": "file:../../libs/web-qr-scanner",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },

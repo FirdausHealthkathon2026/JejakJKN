@@ -1,11 +1,15 @@
 // @ts-nocheck -- logic ported verbatim from the design canvas; data comes from src/api.
 import {Component} from "react";
+import {QrScannerPanel} from "@jejakjkn/web-qr-scanner";
 import {cancelRecord, completeSync, correctRecord, createClinicalEvent, fmtLongDate, loadAll, retryDelivery, scan, submitClaim} from "./api/client";
 import {View} from "./design/View";
 
 const EMPTY_VISIT = {id: '', ref: '', enc: '', inT: '', outT: '', status: 'OPEN', presence: 'QR_VERIFIED', sync: 'LOCAL_ONLY', err: null, pending: 0, failed: 0, delivered: 0, marking: false, records: []};
 
 export default class App extends Component<object, any> {
+  scanPending = false;
+  scanAttempt = null;
+
   newDraft(v, patch) {
     const sel = {};
     v.records.forEach((r) => { if (r.type !== 'STAGE_COMPLETION' && r.status !== 'CANCELLED') sel[r.rid] = { on: true, qty: r.qty }; });
@@ -24,7 +28,39 @@ export default class App extends Component<object, any> {
     screen: 'list', mode: 'CHECK_IN', token: '', tokenErr: false, result: null,
     visits: [], sel: null, open: {}, form: this.emptyForm(), dialog: null,
     excPhase: 'CHECK_IN', exc: this.emptyExc(), dFilter: 'ALL', deliveries: [],
-    bclaims: [], draft: null, cid: null, justSent: false
+    bclaims: [], draft: null, cid: null, justSent: false, submitting: false
+  };
+
+  submitScan = async (rawToken) => {
+    const token = rawToken.trim();
+    if (token.length < 32 || this.scanPending) {
+      if (token.length < 32) this.setState({tokenErr: true, result: null});
+      return;
+    }
+    const mode = this.state.mode;
+    const kind = mode === 'CHECK_IN' ? 'check-in' : 'check-out';
+    const fingerprint = kind + ':' + token;
+    if (!this.scanAttempt || this.scanAttempt.fingerprint !== fingerprint) {
+      this.scanAttempt = {
+        fingerprint,
+        idempotencyKey: crypto.randomUUID(),
+        reference: kind === 'check-in' ? 'VISIT-' + Date.now() : undefined
+      };
+    }
+    this.scanPending = true;
+    this.setState({submitting: true, token, tokenErr: false, result: null});
+    try {
+      const scanned = await scan(kind, token, this.scanAttempt);
+      await this.load();
+      this.scanAttempt = null;
+      this.setState({sel: scanned.encounter_id, token: '', result: {kind: 'ok', vid: scanned.encounter_id, purpose: mode}, tokenErr: false});
+    } catch (error) {
+      const code = ['QR_TOKEN_EXPIRED', 'QR_ALREADY_CONSUMED', 'WRONG_QR_PURPOSE', 'INVALID_ENCOUNTER_STATE', 'INVALID_QR_SIGNATURE', 'INVALID_QR_TOKEN', 'FACILITY_MISMATCH'].includes(error.code) ? error.code : 'HTTP 503';
+      this.setState({result: {kind: 'err', code}, tokenErr: false});
+    } finally {
+      this.scanPending = false;
+      this.setState({submitting: false});
+    }
   };
 
   componentDidMount() {
@@ -34,6 +70,7 @@ export default class App extends Component<object, any> {
 
   componentWillUnmount() {
     clearInterval(this.poll);
+    this.scanAttempt = null;
   }
 
   async load() {
@@ -99,32 +136,26 @@ export default class App extends Component<object, any> {
       QR_ALREADY_CONSUMED: ['QR sudah dipakai', 'QR ini sudah pernah dipindai. Minta pasien menampilkan QR baru. Jika kunjungan sudah tercatat, cek daftar kunjungan hari ini.'],
       WRONG_QR_PURPOSE: ['Jenis QR tidak sesuai', s.mode === 'CHECK_IN' ? 'Pasien menunjukkan QR Keluar. Minta QR Masuk, atau pindah ke mode QR Keluar.' : 'Pasien menunjukkan QR Masuk. Minta QR Keluar, atau pindah ke mode QR Masuk.'],
       INVALID_ENCOUNTER_STATE: ['Kunjungan tidak dapat ditutup', 'Kunjungan untuk QR ini sudah tidak berlangsung.'],
+      INVALID_QR_SIGNATURE: ['QR tidak sah', 'QR tidak memiliki tanda tangan JejakJKN yang valid. Minta pasien membuat QR baru dari aplikasi.'],
+      INVALID_QR_TOKEN: ['QR tidak valid', 'Isi QR tidak dikenali JejakJKN. Minta pasien membuat QR baru dari aplikasi.'],
+      FACILITY_MISMATCH: ['QR untuk faskes lain', 'QR ini tidak diterbitkan untuk faskes ini. Minta pasien membuat QR di lokasi yang benar.'],
       'HTTP 503': ['JejakJKN tidak dapat dihubungi', 'Lanjutkan pelayanan. Coba pindai lagi beberapa saat, atau catat pengecualian bila gangguan berlanjut.']
     };
     const showErr = (code) => this.setState({ result: { kind: 'err', code: ERR[code] ? code : 'HTTP 503' }, tokenErr: false });
-    const runScan = async () => {
-      try {
-        const kind = s.mode === 'CHECK_IN' ? 'check-in' : 'check-out';
-        const scanned = await scan(kind, s.token.trim());
-        await this.load();
-        this.setState({ sel: scanned.encounter_id, token: '', result: { kind: 'ok', vid: scanned.encounter_id, purpose: s.mode }, tokenErr: false });
-      } catch (error) {
-        showErr(error.code);
-      }
-    };
+    const runScan = () => this.submitScan(s.token);
 
     let res = {}, err = {};
     if (s.result && s.result.kind === 'ok') {
-      const rv = visits.find((v) => v.id === s.result.vid) || visits[0];
-      const e = ENC[rv.status];
+      const rv = visits.find((v) => v.id === s.result.vid);
+      const e = rv ? ENC[rv.status] : ['Berhasil diproses', 'ok'];
       const isIn = s.result.purpose === 'CHECK_IN';
       res = {
         title: isIn ? 'Masuk berhasil' : 'Keluar berhasil',
-        enc: rv.enc, ref: rv.ref,
+        enc: rv?.enc || s.result.vid, ref: rv?.ref || 'Muat ulang daftar kunjungan',
         sLabel: e[0], sBg: tone[e[1]].bg, sFg: tone[e[1]].fg,
         timeLabel: isIn ? 'Waktu masuk' : 'Waktu keluar',
-        time: isIn ? rv.inT : rv.outT,
-        open: () => this.setState({ screen: 'visit', sel: rv.id, open: {}, form: this.emptyForm() })
+        time: rv ? (isIn ? rv.inT : rv.outT) : '—',
+        open: () => rv ? this.setState({ screen: 'visit', sel: rv.id, open: {}, form: this.emptyForm() }) : this.load()
       };
     }
     if (s.result && s.result.kind === 'err') {
@@ -462,8 +493,8 @@ export default class App extends Component<object, any> {
       isVisit: s.screen === 'visit',
       navListBg: navList.bg, navListFg: navList.fg, navListCurrent: s.screen === 'list' ? 'page' : undefined,
       navScanBg: navScan.bg, navScanFg: navScan.fg, navScanCurrent: s.screen === 'scan' ? 'page' : undefined,
-      goList: () => this.setState({ screen: 'list', dialog: null }),
-      goScan: () => this.setState({ screen: 'scan', result: null, token: '', tokenErr: false }),
+      goList: () => { this.scanAttempt = null; this.setState({ screen: 'list', dialog: null, token: '' }); },
+      goScan: () => { this.scanAttempt = null; this.setState({ screen: 'scan', result: null, token: '', tokenErr: false }); },
 
       listSummary,
       visitRows,
@@ -472,11 +503,11 @@ export default class App extends Component<object, any> {
       inPressed: String(s.mode === 'CHECK_IN'), outPressed: String(s.mode === 'CHECK_OUT'),
       inBg: segIn.bg, inFg: segIn.fg, inShadow: segIn.shadow,
       outBg: segOut.bg, outFg: segOut.fg, outShadow: segOut.shadow,
-      modeIn: () => this.setState({ mode: 'CHECK_IN', result: null }),
-      modeOut: () => this.setState({ mode: 'CHECK_OUT', result: null }),
+      modeIn: () => { if (!s.submitting) { this.scanAttempt = null; this.setState({ mode: 'CHECK_IN', result: null, token: '' }); } },
+      modeOut: () => { if (!s.submitting) { this.scanAttempt = null; this.setState({ mode: 'CHECK_OUT', result: null, token: '' }); } },
       token: s.token,
-      setToken: (ev) => this.setState({ token: ev.target.value, tokenErr: false }),
-      noToken: !s.token.trim(),
+      setToken: (ev) => { if (!s.submitting) this.setState({ token: ev.target.value, tokenErr: false }); },
+      noToken: !s.token.trim() || s.submitting,
       tokenErr: !!s.tokenErr,
       process: () => {
         if (s.token.trim().length < 32) { this.setState({ tokenErr: true, result: null }); return; }
@@ -502,7 +533,20 @@ export default class App extends Component<object, any> {
 
       dialogOpen: !!d,
       dlg,
-      closeDialog: () => this.setState({ dialog: null })
+      closeDialog: () => this.setState({ dialog: null }),
+
+      scannerSlot: s.screen === 'scan' ? (
+        <QrScannerPanel
+          key={s.screen + ':' + s.mode}
+          disabled={s.submitting}
+          resetKey={s.screen + ':' + s.mode}
+          modeName={s.mode === 'CHECK_IN' ? 'QR Masuk' : 'QR Keluar'}
+          onDecoded={(token) => this.submitScan(token)}
+          onError={() => undefined}
+          viewfinderHeight={220}
+          borderRadius={14}
+        />
+      ) : null
     };
   }
 

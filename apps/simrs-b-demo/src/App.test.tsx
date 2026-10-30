@@ -28,4 +28,13 @@ describe("simrs b screens", () => {
   it("shows the canonical translation of a strip", () => {
     expect(render({...loaded, screen: "visit"})).toContain("10 tablet");
   });
+
+  it("renders camera and gallery controls on the scan screen", () => {
+    const app = new App({});
+    Object.assign(app.state, {screen: "scan"});
+    app.setState = () => undefined;
+    const html = renderToString(app.render());
+    expect(html).toContain("Buka kamera");
+    expect(html).toContain("Pilih dari galeri");
+  });
 });

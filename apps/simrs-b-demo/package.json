@@ -5,6 +5,7 @@
   "description": "SIMRS-B Secondary Hospital Simulator — Proves multi-tenant & multi-schema adapter independence.",
   "type": "module",
   "dependencies": {
+    "@jejakjkn/web-qr-scanner": "file:../../libs/web-qr-scanner",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },

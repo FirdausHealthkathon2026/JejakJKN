@@ -116,11 +116,11 @@ export async function loadAll(desc: (r: any) => string) {
   return {visits: mapped, bclaims, deliveries: mapped.flatMap((v) => v.deliveries)};
 }
 
-export function scan(mode: "IN" | "OUT", token: string, reference: string) {
+export function scan(mode: "IN" | "OUT", token: string, reference: string, idempotencyKey: string) {
   const path = mode === "IN" ? "/pindai/masuk" : "/pindai/keluar";
   return request<{encounter_id: string}>(path, {
     method: "POST",
-    headers: {"Idempotency-Key": crypto.randomUUID()},
+    headers: {"Idempotency-Key": idempotencyKey},
     body: JSON.stringify({token_qr: token, referensi_kunjungan: reference || null}),
   });
 }
