@@ -34,29 +34,62 @@ INTERNAL_ITEM_REF_PATTERN = re.compile(
 MAX_SECTION_ITEMS = 20
 MAX_ITEM_CHARS = 600
 
+# Status tokens and rule identifiers must never reach a reviewer-facing narrative.
+RAW_CODE_PATTERN = re.compile(r"\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b|\bR\d{3}\b")
+SESUAI_PREFIX = "YANG SESUAI: "
+TIDAK_SESUAI_PREFIX = "YANG TIDAK SESUAI: "
+
 ITEM_TYPE_LABELS = {
-    "PROCEDURE": "Tindakan/prosedur medis",
-    "DIAGNOSIS": "Diagnosis klinis",
-    "MEDICATION": "Pemberian obat",
-    "MEDICATION_DISPENSE": "Penyerahan obat farmasi",
+    "PROCEDURE": "Tindakan",
+    "DIAGNOSIS": "Diagnosis",
+    "MEDICATION": "Obat",
+    "MEDICATION_DISPENSE": "Obat",
+}
+
+CANONICAL_NAMES = {
+    "JJKN-DIAG-V1:DIAG-H10-9": "Konjungtivitis",
+    "JJKN-DIAG-V1:DIAG-J06-9": "ISPA akut",
+    "JJKN-PROC-V1:PROC-CONSULT-GP": "Konsultasi dokter umum",
+    "JJKN-PROC-V1:PROC-EXAM-EYE": "Pemeriksaan mata",
+    "JJKN-PROC-V1:PROC-SLIT-LAMP": "Biomikroskopi slit lamp",
+    "JJKN-PROC-V1:PROC-ECG": "Elektrokardiografi",
+    "JJKN-PROC-V1:PROC-CBC": "Darah lengkap",
+    "JJKN-MED-V1:MED-PARACETAMOL-500": "Paracetamol 500 mg",
+    "JJKN-MED-V1:MED-AMOXICILLIN-500": "Amoxicillin 500 mg",
+    "JJKN-MED-V1:MED-LEVOFLOXACIN-ED": "Levofloxacin tetes mata 5 mL",
 }
 
 REF_FALLBACK_LABELS = {
     "DX-PRIMARY": "Diagnosis utama pada klaim",
     "DX-SECONDARY": "Diagnosis sekunder pada klaim",
-    "PROC-1": "Tindakan/prosedur medis pada klaim",
-    "PROC-2": "Tindakan/prosedur medis tambahan pada klaim",
-    "MED-1": "Pemberian obat pada klaim",
+    "PROC-1": "Tindakan pada klaim",
+    "PROC-2": "Tindakan tambahan pada klaim",
+    "MED-1": "Obat pada klaim",
 }
 
 MATCH_RESULT_LABELS = {
-    "MATCHED": "Sesuai dengan bukti rekam medis",
-    "MISSING": "Tidak ditemukan bukti di rekam medis SIMRS",
-    "MISSING_IN_EVIDENCE": "Tidak ditemukan bukti pendukung di rekam medis",
-    "PATIENT_DISPUTED": "Disanggah oleh pasien (pasien menyatakan tidak menerima layanan/obat)",
-    "QUANTITY_MISMATCH": "Jumlah yang ditagihkan tidak sesuai dengan bukti penyerahan",
-    "PRESCRIBED_ONLY": "Hanya tercatat diresepkan tetapi tidak ada bukti penyerahan farmasi",
-    "UNSUPPORTED_MAPPING": "Kode klaim belum terpetakan pada katalog bukti klinis",
+    "MISSING": "tidak ada di catatan faskes",
+    "PATIENT_DISPUTED": "disanggah pasien",
+    "QUANTITY_MISMATCH": "jumlah yang diklaim berbeda dengan yang diserahkan",
+    "PRESCRIBED_ONLY": "hanya tercatat diresepkan, belum ada catatan penyerahan",
+    "UNSUPPORTED_MAPPING": "kode klaim belum dapat dipetakan ke katalog",
+}
+
+FINDING_LABELS = {
+    "NO_ENCOUNTER": "kunjungan yang cocok tidak ditemukan",
+    "WEAK_IDENTITY": "identitas pasien belum cukup kuat",
+    "MISSING_OR_PRESCRIBED_ONLY": "layanan tidak ada di catatan faskes",
+    "QUANTITY_MISMATCH": "jumlah yang diklaim berbeda dengan catatan faskes",
+    "PATIENT_DISPUTED": "layanan disanggah pasien",
+    "TIME_INCONSISTENCY": "waktu layanan di luar rentang klaim",
+    "ENCOUNTER_REUSED": "kunjungan juga dipakai klaim lain",
+    "EVIDENCE_REUSED": "catatan layanan juga dipakai klaim lain",
+    "CLAIM_REVERIFIED": "klaim ini pernah diperiksa sebelumnya",
+    "STALE_OR_LATE_EVIDENCE": "data kunjungan berubah setelah pemeriksaan",
+    "DOCUMENT_CROSS_PATIENT": "dokumen yang sama muncul pada pasien lain",
+    "CHECKOUT_EXCEPTION": "kehadiran pasien belum terverifikasi dengan QR",
+    "PATIENT_NO_RESPONSE": "pasien belum memberi tanggapan",
+    "UNSUPPORTED_MAPPING": "kode klaim belum dapat dipetakan ke katalog",
 }
 
 
@@ -66,92 +99,48 @@ def compute_digest(package: dict[str, Any]) -> str:
     ).hexdigest()
 
 
-def _lookup_seeded_code_display(code_system: str, code: str) -> str | None:
-    if code_system and code:
-        hit = SEEDED_CODE_CATALOG.get(f"{code_system}:{code}")
-        if hit:
-            return hit
-    if code:
-        hit = SEEDED_CODE_CATALOG.get(code)
-        if hit:
-            return hit
-    return None
+def _lookup_code_name(code_system: str, code: str) -> str | None:
+    key = f"{code_system}:{code}"
+    return (
+        CANONICAL_NAMES.get(key)
+        or SEEDED_CODE_CATALOG.get(key)
+        or SEEDED_CODE_CATALOG.get(code)
+    )
+
+
+def _quantity_text(item: dict[str, Any]) -> str:
+    qty = item.get("quantity") or item.get("claimed_quantity")
+    unit = str(item.get("unit") or "").strip()
+    if not qty or not unit or unit in {"1", "unit"}:
+        return ""
+    return f" sejumlah {float(qty):g} {unit}"
 
 
 def _describe_item_subject(item: dict[str, Any]) -> str:
-    """Build an explicit human-readable subject for a claim item using seeded catalogs and item metadata."""
-    for key in ("display", "item_name", "description", "name"):
-        val = item.get(key)
-        if (
-            isinstance(val, str)
-            and val.strip()
-            and not INTERNAL_ITEM_REF_PATTERN.fullmatch(val.strip())
-        ):
-            return val.strip()
-
-    item_type = str(item.get("item_type") or "").upper()
-    code_system = str(item.get("code_system") or "").strip()
-    code = str(item.get("code") or "").strip()
-    qty = item.get("quantity") or item.get("claimed_quantity")
-    unit = str(item.get("unit") or "").strip()
+    """Name a claim item from metadata or the seeded catalogs, never by its code."""
     ref = str(item.get("claim_item_ref") or item.get("item_ref") or "").upper()
-
+    item_type = str(item.get("item_type") or "").upper()
     if not item_type:
-        if ref.startswith("DX"):
-            item_type = "DIAGNOSIS"
-        elif ref.startswith("PROC"):
-            item_type = "PROCEDURE"
-        elif ref.startswith("MED"):
-            item_type = "MEDICATION"
+        prefix = {"DX": "DIAGNOSIS", "PROC": "PROCEDURE", "MED": "MEDICATION"}
+        item_type = next((v for k, v in prefix.items() if ref.startswith(k)), "")
+    label = ITEM_TYPE_LABELS.get(item_type, "Layanan")
 
-    if item_type or code:
-        type_label = ITEM_TYPE_LABELS.get(
-            item_type, item_type.title() or "Layanan medis"
-        )
-        seeded_display = _lookup_seeded_code_display(code_system, code)
-        parts = [type_label]
-        if seeded_display:
-            if code and code not in seeded_display:
-                cs_prefix = f"{code_system} " if code_system else ""
-                parts.append(f"{seeded_display} ({cs_prefix}{code})")
-            else:
-                parts.append(f"{seeded_display}")
-        elif code and not INTERNAL_ITEM_REF_PATTERN.fullmatch(code):
-            cs_prefix = f"{code_system} " if code_system else ""
-            parts.append(f"({cs_prefix}{code})")
-        if qty and unit and unit not in {"1", "unit"}:
-            parts.append(f"sejumlah {qty} {unit}")
-        return " ".join(parts)
-
-    reason = str(item.get("reason") or "").strip()
-    cleaned_reason = INTERNAL_ITEM_REF_PATTERN.sub("", reason).strip(" :,-")
-    if cleaned_reason:
-        lower = cleaned_reason.lower()
-        if lower in {"exact canonical match", "missing"}:
-            return REF_FALLBACK_LABELS.get(ref, "Layanan/tindakan medis pada klaim")
-        if lower.startswith("matched procedure "):
-            proc = cleaned_reason[len("matched procedure ") :].strip()
-            if proc.lower() == "evidence":
-                return "Tindakan/prosedur medis yang ditagihkan"
-            seeded_display = _lookup_seeded_code_display("", proc)
-            if seeded_display:
-                return f"Tindakan/prosedur {seeded_display}"
-            return f"Tindakan/prosedur {proc}"
-        if lower.startswith("patient disputed receiving "):
-            med = cleaned_reason[len("patient disputed receiving ") :].strip()
-            return f"Pemberian obat/layanan {med}"
-        if "procedure" in lower:
-            return f"Tindakan/prosedur medis ({cleaned_reason})"
-        if (
-            "medication" in lower
-            or "dispensed" in lower
-            or "tablet" in lower
-            or "mg" in lower
-        ):
-            return f"Pemberian obat ({cleaned_reason})"
-        return cleaned_reason
-
-    return REF_FALLBACK_LABELS.get(ref, "Layanan/tindakan medis pada klaim")
+    name = next(
+        (
+            str(item[key]).strip()
+            for key in ("display", "item_name", "description", "name")
+            if isinstance(item.get(key), str)
+            and item[key].strip()
+            and not INTERNAL_ITEM_REF_PATTERN.fullmatch(item[key].strip())
+        ),
+        None,
+    ) or _lookup_code_name(
+        str(item.get("code_system") or "").strip(),
+        str(item.get("code") or "").strip(),
+    )
+    if name:
+        return f"{label} {name}{_quantity_text(item)}"
+    return REF_FALLBACK_LABELS.get(ref, f"{label} pada klaim")
 
 
 def _build_item_ref_map(package: dict[str, Any]) -> dict[str, str]:
@@ -175,8 +164,7 @@ def _replace_internal_item_refs(text: str, ref_map: dict[str, str]) -> str:
 def _classify_sesuai_dan_tidak_sesuai(
     package: dict[str, Any],
 ) -> tuple[list[str], list[str], list[dict[str, Any]]]:
-    """Return explicit (hal_yang_sesuai, hal_yang_tidak_sesuai, detailed_items) without internal ref tokens."""
-    ref_map = _build_item_ref_map(package)
+    """Return plain-language (sesuai, tidak_sesuai, detailed_items) without any code."""
     assessment = package.get("assessment", {})
     yang_sesuai: list[str] = []
     yang_tidak_sesuai: list[str] = []
@@ -184,73 +172,48 @@ def _classify_sesuai_dan_tidak_sesuai(
 
     enc_status = assessment.get("encounter_match_status")
     if enc_status == "UNIQUE_MATCH":
-        yang_sesuai.append(
-            "Kunjungan pasien cocok secara unik (UNIQUE_MATCH) dengan catatan kehadiran di rumah sakit."
-        )
+        yang_sesuai.append("Kunjungan pasien cocok dengan catatan kehadiran di faskes.")
     elif enc_status == "NO_ENCOUNTER_FOUND":
         yang_tidak_sesuai.append(
-            "Kunjungan pasien tidak ditemukan sama sekali pada database rumah sakit/SIMRS (NO_ENCOUNTER_FOUND / indikasi klaim tanpa kunjungan)."
+            "Tidak ada catatan kunjungan pasien di faskes dan tanggal yang diklaim."
+        )
+    elif enc_status == "AMBIGUOUS_MATCH":
+        yang_tidak_sesuai.append(
+            "Ada lebih dari satu kunjungan yang sama-sama cocok dengan klaim."
+        )
+    elif enc_status == "IDENTITY_INSUFFICIENT":
+        yang_tidak_sesuai.append(
+            "Identitas pasien belum pasti, jadi kunjungan belum dapat dikaitkan."
         )
     elif enc_status:
-        yang_tidak_sesuai.append(
-            f"Pencocokan kunjungan pasien tidak cocok unik ({enc_status})."
-        )
+        yang_tidak_sesuai.append("Kunjungan pasien belum dapat dipastikan.")
 
-    id_status = assessment.get("identity_assurance")
-    if id_status == "VERIFIED_PARTICIPANT_ID":
-        yang_sesuai.append(
-            "Identitas kepesertaan pasien telah terverifikasi valid (VERIFIED_PARTICIPANT_ID)."
-        )
-    elif id_status:
-        yang_tidak_sesuai.append(
-            f"Verifikasi identitas kepesertaan belum memadai ({id_status})."
-        )
+    if assessment.get("identity_assurance") in {"STRONG", "VERIFIED_PARTICIPANT_ID"}:
+        yang_sesuai.append("Identitas peserta terverifikasi.")
 
-    dup_status = assessment.get("duplicate_assessment_status")
-    if dup_status in {"POTENTIAL_ENCOUNTER_REUSE", "POTENTIAL_EVIDENCE_REUSE"}:
+    if assessment.get("duplicate_assessment_status") in {
+        "POTENTIAL_ENCOUNTER_REUSE",
+        "POTENTIAL_EVIDENCE_REUSE",
+    }:
         yang_tidak_sesuai.append(
-            f"Terdeteksi potensi penggunaan ulang kunjungan/bukti klinis pada klaim berbeda ({dup_status})."
+            "Kunjungan atau catatan layanan yang sama juga dipakai klaim lain."
         )
 
     for item in package.get("items", []):
         subject = _describe_item_subject(item)
         match_result = str(item.get("match_result") or "UNKNOWN").upper()
-        raw_reason = str(item.get("reason") or "").strip()
-        clean_reason = _replace_internal_item_refs(raw_reason, ref_map)
-        result_label = MATCH_RESULT_LABELS.get(match_result, match_result)
-
         if match_result == "MATCHED":
-            detail = (
-                result_label
-                if clean_reason.lower() in {"", "exact canonical match"}
-                else clean_reason
-            )
-            desc = f"{subject} sesuai dengan bukti rekam medis ({detail})."
+            desc = f"{subject} sesuai catatan faskes."
             yang_sesuai.append(desc)
-            detailed_items.append(
-                {
-                    "status_kecocokan": "SESUAI",
-                    "layanan_atau_item": subject,
-                    "match_result": match_result,
-                    "penjelasan": desc,
-                }
-            )
+            status = "SESUAI"
         else:
-            detail = (
-                result_label
-                if clean_reason.lower() in {"", "missing", match_result.lower()}
-                else f"{result_label}; detail: {clean_reason}"
-            )
-            desc = f"{subject} tidak sesuai bukti ({detail})."
+            label = MATCH_RESULT_LABELS.get(match_result, "belum dapat dipastikan")
+            desc = f"{subject}: {label}."
             yang_tidak_sesuai.append(desc)
-            detailed_items.append(
-                {
-                    "status_kecocokan": "TIDAK_SESUAI",
-                    "layanan_atau_item": subject,
-                    "match_result": match_result,
-                    "penjelasan": desc,
-                }
-            )
+            status = "TIDAK_SESUAI"
+        detailed_items.append(
+            {"status_kecocokan": status, "layanan_atau_item": subject, "penjelasan": desc}
+        )
 
     return yang_sesuai, yang_tidak_sesuai, detailed_items
 
@@ -351,7 +314,11 @@ def validate_narrative(
             if not isinstance(entry, str):
                 return fallback_narrative(), False
             text = _replace_internal_item_refs(entry.strip(), ref_map)
-            if not text or len(text) > MAX_ITEM_CHARS:
+            if (
+                not text
+                or len(text) > MAX_ITEM_CHARS
+                or (key != "findings" and RAW_CODE_PATTERN.search(text))
+            ):
                 return fallback_narrative(), False
             lines.append(text)
         cleaned[key] = lines
@@ -391,40 +358,26 @@ def narrate(package: dict[str, Any]) -> tuple[dict[str, list[str]], str, str]:
     ref_map = _build_item_ref_map(package)
     yang_sesuai, yang_tidak_sesuai, _ = _classify_sesuai_dan_tidak_sesuai(package)
 
-    facts: list[str] = []
-    if yang_sesuai:
-        facts.append("YANG SESUAI: " + " | ".join(yang_sesuai))
-    else:
-        facts.append(
-            "YANG SESUAI: Belum ada butir klaim atau kunjungan yang terverifikasi cocok penuh."
-        )
-
-    if yang_tidak_sesuai:
-        facts.append(
-            "YANG TIDAK SESUAI: " + " | ".join(yang_tidak_sesuai)
-        )
-    else:
-        facts.append(
-            "YANG TIDAK SESUAI: Tidak ditemukan ketidaksesuaian pada rincian item klaim."
-        )
-
     findings_lines: list[str] = []
     for row in package.get("findings", []):
-        ref = str(row.get("claim_item_ref") or "").strip()
-        subject = ref_map.get(ref, "")
-        target_info = f" pada {subject}" if subject else ""
-        findings_lines.append(
-            f"{row['rule_id']} [{row['severity']}]{target_info}: {row['finding_code']}."
+        subject = ref_map.get(str(row.get("claim_item_ref") or "").strip())
+        label = FINDING_LABELS.get(
+            str(row.get("finding_code")), "perlu ditinjau verifikator"
         )
+        findings_lines.append(f"{subject}: {label}." if subject else f"{label.capitalize()}.")
 
     result = {
-        "summary": facts,
+        # One entry per fact: a single joined sentence overflows MAX_ITEM_CHARS on large claims.
+        "summary": [SESUAI_PREFIX + line for line in yang_sesuai]
+        + [TIDAK_SESUAI_PREFIX + line for line in yang_tidak_sesuai],
         "findings": findings_lines,
         "questions": ["Apakah bukti klinis tambahan tersedia?"],
         "limitations": [
             "Ringkasan ini membantu telaah manusia dan bukan keputusan fraud atau pembayaran."
         ],
     }
+    if not result["summary"]:
+        result["summary"] = ["YANG SESUAI: Belum ada data untuk diringkas."]
     validated, is_valid = validate_narrative(result, package)
     status = "VALID" if is_valid else "FALLBACK"
     digest = compute_digest(package)

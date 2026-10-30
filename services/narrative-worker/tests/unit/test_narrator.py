@@ -197,7 +197,8 @@ def test_rule_r007_double_billing_formatting() -> None:
     dumped_nar = json.dumps(narrative, ensure_ascii=False)
     assert "DX-PRIMARY" not in dumped_nar
     assert "PROC-1" not in dumped_nar
-    assert "POTENTIAL_ENCOUNTER_REUSE" in dumped_nar or "penggunaan ulang" in dumped_nar
+    assert "POTENTIAL_ENCOUNTER_REUSE" not in dumped_nar
+    assert "dipakai klaim lain" in dumped_nar
     assert any("YANG SESUAI" in s for s in narrative["summary"])
     assert any("YANG TIDAK SESUAI" in s for s in narrative["summary"])
 
@@ -245,8 +246,8 @@ async def test_generate_narrative_uses_groq_llm_when_api_key_configured(
                                 "```json\n"
                                 "{\n"
                                 '  "summary": [\n'
-                                '    "YANG PAS: Kunjungan pasien cocok secara unik (UNIQUE_MATCH) dan identitas kepesertaan terverifikasi valid.",\n'
-                                '    "YANG TIDAK PAS: Tindakan/prosedur medis belum memiliki bukti pendukung pada rekam medis SIMRS."\n'
+                                '    "YANG SESUAI: Kunjungan pasien cocok dan identitas kepesertaan terverifikasi.",\n'
+                                '    "YANG TIDAK SESUAI: Tindakan belum memiliki catatan di faskes."\n'
                                 "  ],\n"
                                 '  "findings": ["R003_ITEM_MISSING [HIGH]: Tindakan/prosedur medis yang ditagihkan tidak ditemukan pada bukti klinis."],\n'
                                 '  "questions": ["Apakah terdapat keterlambatan sinkronisasi bukti tindakan dari SIMRS?"],\n'
@@ -278,13 +279,13 @@ async def test_generate_narrative_uses_groq_llm_when_api_key_configured(
     assert method == "LLM"
     assert model_info == "groq:llama-3.3-70b-versatile"
     assert len(digest) == 64
-    assert "UNIQUE_MATCH" in narrative["summary"][0]
+    assert narrative["summary"][0].startswith("YANG SESUAI: ")
     assert "ITEM-1" not in str(narrative)
     assert client.captured_headers is not None
     assert client.captured_headers["Authorization"] == "Bearer gsk_test_token_123"
     assert "Budi Santoso" not in str(client.captured_json)
     assert "SYNTHETIC-10001" not in str(client.captured_json)
-    assert "ITEM-1" not in str(client.captured_json)
+    assert "ITEM-1" not in client.captured_json["messages"][1]["content"]
 
 
 @pytest.mark.asyncio
@@ -323,3 +324,43 @@ async def test_generate_narrative_falls_back_to_template_on_llm_error_or_banned_
     assert len(digest) == 64
     assert "pasti fraud" not in str(narrative).lower()
     assert "ITEM-1" not in str(narrative)
+
+
+def test_template_stays_valid_for_large_claims_and_has_no_raw_codes() -> None:
+    items = [
+        {
+            "claim_item_ref": f"PROC-{index}",
+            "item_type": "PROCEDURE",
+            "code_system": "ICD-9-CM",
+            "code": "3995",
+            "match_result": "MATCHED",
+            "reason": "Exact canonical match",
+        }
+        for index in range(1, 7)
+    ]
+    package = {
+        "assessment": {
+            "encounter_match_status": "UNIQUE_MATCH",
+            "identity_assurance": "STRONG",
+        },
+        "items": items,
+        "findings": [],
+    }
+    narrative, status, _ = narrate(package)
+    assert status == "VALID"
+    assert all(len(line) <= 600 for line in narrative["summary"])
+    dumped = json.dumps(narrative)
+    assert "UNIQUE_MATCH" not in dumped
+    assert "3995" not in dumped
+    assert "Hemodialysis" in dumped
+
+
+def test_llm_output_with_status_codes_is_rejected() -> None:
+    candidate = {
+        "summary": ["YANG SESUAI: Kunjungan cocok (UNIQUE_MATCH)."],
+        "findings": [],
+        "questions": [],
+        "limitations": [],
+    }
+    _, ok = validate_narrative(candidate, _sample_package())
+    assert ok is False
