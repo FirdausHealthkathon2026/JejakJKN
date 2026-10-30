@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[3]
 SERVICE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVICE_DIR))
 
-from app.domain.narrator import minimize_package, narrate  # noqa: E402
+from app.domain.narrator import narrate  # noqa: E402
 from app.infrastructure.llm_adapter import (  # noqa: E402
     generate_narrative_sync,
     get_groq_api_key,
@@ -206,7 +206,7 @@ def run_all() -> None:
         return
 
     os.environ["NARRATIVE_PROVIDER"] = "groq"
-    print(f"=== Menjalankan Live Test Groq untuk 3 Kasus Rule Mismatch ===")
+    print("=== Menjalankan Live Test Groq untuk 3 Kasus Rule Mismatch ===")
     print(f"Menggunakan Provider: Groq ({os.getenv('GROQ_MODEL', 'qwen/qwen3.8-27b')})\n")
 
     for case in TEST_CASES:

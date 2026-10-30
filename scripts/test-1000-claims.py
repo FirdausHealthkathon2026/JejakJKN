@@ -8,10 +8,8 @@ Validates end-to-end fraud screening accuracy across 4 dimensions:
 """
 
 import argparse
-import asyncio
 import json
 import time
-import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import httpx
 
@@ -144,8 +142,8 @@ def main():
     parser.add_argument("--out", type=str, default="contracts/fixtures/benchmark_results.json", help="Output JSON path")
     args = parser.parse_args()
 
-    print(f"=== JEJAKJKN 1,000 REAL BPJS CLAIM VERIFICATION BENCHMARK ===")
-    print(f"1. Authenticating as BPJS Verifier...")
+    print("=== JEJAKJKN 1,000 REAL BPJS CLAIM VERIFICATION BENCHMARK ===")
+    print("1. Authenticating as BPJS Verifier...")
     token = get_verifier_token()
     print("   [OK] Token acquired.")
 
