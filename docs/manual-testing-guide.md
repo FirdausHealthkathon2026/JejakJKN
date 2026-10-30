@@ -22,6 +22,8 @@ Seluruh portal web telah aktif dan dapat diakses langsung melalui peramban (brow
 
 ## 2. SKENARIO 1: Happy Path — Pelayanan Sah & Auto-Approve (Lengkap End-to-End)
 
+> QR Masuk dan QR Keluar sekarang dapat diproses dari halaman **Pindai QR** SIMRS A/B melalui **Buka kamera**, **Pilih dari galeri**, atau tempel token. Kamera memerlukan `localhost`/HTTPS; gambar lokal harus JPEG, PNG, atau WebP maksimal 10 MiB dan 20 megapiksel. QR langsung diproses setelah terbaca dan tetap memiliki masa berlaku sekitar 60 detik serta hanya dapat dipakai sekali.
+
 **Tujuan:** Menguji siklus lengkap pasien berobat secara sah dengan bukti klinis lengkap, hingga klaim otomatis disetujui tanpa temuan fraud.
 
 ```mermaid

@@ -35,4 +35,17 @@ Di Verifikator, buka Unggah CSV, pilih `klaim_contoh_1000.csv`, lalu periksa. Se
 
 ## SIMRS B
 
-Klik QR di aplikasi pasien untuk menyalin token, lalu tempel di halaman Pindai QR SIMRS B. Tombol "Simulasikan pindai petugas" hanya mengarah ke SIMRS A.
+Tombol "Simulasikan pindai petugas" hanya mengarah ke SIMRS A.
+
+## Memindai QR dengan kamera atau galeri
+
+Fitur ini tersedia di halaman **Pindai QR** SIMRS A dan SIMRS B.
+
+1. Tampilkan QR Masuk atau QR Keluar pada Portal Pasien. Gunakan perangkat atau jendela lain agar kamera dapat melihat QR.
+2. Pilih mode QR yang sama di SIMRS, lalu tekan **Buka kamera**. Izinkan akses kamera dan arahkan satu QR utuh ke kotak pemindai.
+3. Alternatif tanpa kamera: simpan tangkapan layar QR, tekan **Pilih dari galeri**, lalu pilih JPEG, PNG, atau WebP tersebut.
+4. QR yang terbaca langsung diproses. Jangan menekan tombol proses manual lagi.
+
+Kamera browser bekerja pada `localhost` atau HTTPS tepercaya. Gambar maksimal 10 MiB dan 20 megapiksel, diproses hanya di perangkat, dan tidak diunggah. QR berlaku sekitar 60 detik dan hanya dapat dipakai sekali, jadi buat QR baru bila pengujian terlambat atau ingin mengulang.
+
+Untuk menguji kegagalan, tolak izin kamera lalu pastikan galeri dan tempel token tetap dapat digunakan. Coba juga QR kedaluwarsa, QR yang sudah dipakai, dan mode Masuk/Keluar yang salah.
