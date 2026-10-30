@@ -12,6 +12,18 @@ class DecisionRequest(BaseModel):
     reason: str = Field(min_length=10, max_length=2000)
 
 
+class AssignRequest(BaseModel):
+    assignee: str = Field(min_length=2, max_length=128)
+
+
+class CaseEventView(BaseModel):
+    kind: str
+    actor_name: str
+    code: str | None = None
+    detail: str | None = None
+    created_at: datetime
+
+
 class CaseView(BaseModel):
     id: UUID
     verification_id: UUID
@@ -21,8 +33,14 @@ class CaseView(BaseModel):
     state: str
     is_stale: bool
     opened_at: datetime
+    assigned_name: str | None = None
+    finding_codes: list[str] = Field(default_factory=list)
     review_package: dict[str, Any] | None = None
     narrative: dict[str, Any] | None = None
+    narrative_method: str | None = None
+    narrative_status: str | None = None
+    narrative_generated_at: datetime | None = None
+    events: list[CaseEventView] = Field(default_factory=list)
 
 
 class DecisionView(BaseModel):

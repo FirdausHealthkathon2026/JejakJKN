@@ -13,7 +13,7 @@ from jejakjkn_auth.dependencies import (
 )
 from jejakjkn_auth.jwt_verifier import Principal
 
-from app.api.schemas import CaseView, DecisionRequest, DecisionView
+from app.api.schemas import AssignRequest, CaseView, DecisionRequest, DecisionView
 from app.application.use_cases import ReviewApplication
 from app.config import get_settings
 from app.infrastructure.db import get_session
@@ -54,6 +54,16 @@ async def get_case(
     app: ReviewApplication = Depends(application),
 ) -> dict:
     return await app.get_case(case_id, principal, request.state.request_id, purpose)
+
+
+@router.post("/{case_id}/assign", response_model=CaseView)
+async def assign(
+    case_id: UUID,
+    body: AssignRequest,
+    principal: Principal = Depends(decider),
+    app: ReviewApplication = Depends(application),
+) -> dict:
+    return await app.assign(case_id, body, principal)
 
 
 @router.post("/{case_id}/decisions", response_model=DecisionView, status_code=201)

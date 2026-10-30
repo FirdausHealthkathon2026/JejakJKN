@@ -37,6 +37,7 @@ class ReviewCase(Base):
     claim_id: Mapped[str] = mapped_column(String(128))
     owner_org: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
     assigned_to: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    assigned_name: Mapped[str | None] = mapped_column(String(128))
     state: Mapped[str] = mapped_column(String(32), default="OPEN")
     is_stale: Mapped[bool] = mapped_column(Boolean, default=False)
     review_package_json: Mapped[dict[str, Any]] = mapped_column(JSONB)
@@ -45,6 +46,21 @@ class ReviewCase(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class CaseEvent(Base):
+    __tablename__ = "case_events"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
+    case_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("review_cases.id"), index=True
+    )
+    kind: Mapped[str] = mapped_column(String(32))
+    actor_name: Mapped[str] = mapped_column(String(128))
+    code: Mapped[str | None] = mapped_column(String(32))
+    detail: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
     )
 
 

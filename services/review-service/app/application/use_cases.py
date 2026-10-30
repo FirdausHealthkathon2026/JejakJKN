@@ -9,11 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from jejakjkn_auth.jwt_verifier import Principal
 from jejakjkn_canonical.problems import Problem
 
-from app.api.schemas import DecisionRequest
+from app.api.schemas import AssignRequest, DecisionRequest
 from app.domain.audit_chain import GENESIS, digest_payload, record_hash
 from app.infrastructure.models import (
     AccessAudit,
     AuditChain,
+    CaseEvent,
     NarrativeArtifact,
     ReviewCase,
     ReviewDecision,
@@ -38,8 +39,13 @@ class ReviewApplication:
 
     @staticmethod
     def _case(
-        row: ReviewCase, *, detail: bool = False, narrative: dict | None = None
+        row: ReviewCase,
+        *,
+        detail: bool = False,
+        narrative: NarrativeArtifact | None = None,
+        events: list[CaseEvent] | None = None,
     ) -> dict:
+        package = row.review_package_json or {}
         return {
             "id": row.id,
             "verification_id": row.verification_id,
@@ -49,8 +55,25 @@ class ReviewApplication:
             "state": row.state,
             "is_stale": row.is_stale,
             "opened_at": row.opened_at,
-            "review_package": row.review_package_json if detail else None,
-            "narrative": narrative if detail else None,
+            "assigned_name": row.assigned_name,
+            "finding_codes": [
+                item.get("finding_code") for item in package.get("findings", [])
+            ],
+            "review_package": package if detail else None,
+            "narrative": narrative.narrative_json if narrative else None,
+            "narrative_method": narrative.method if narrative else None,
+            "narrative_status": narrative.validation_status if narrative else None,
+            "narrative_generated_at": narrative.generated_at if narrative else None,
+            "events": [
+                {
+                    "kind": event.kind,
+                    "actor_name": event.actor_name,
+                    "code": event.code,
+                    "detail": event.detail,
+                    "created_at": event.created_at,
+                }
+                for event in events or []
+            ],
         }
 
     async def list_cases(self, principal: Principal) -> list[dict]:
@@ -101,10 +124,40 @@ class ReviewApplication:
             "SENSITIVE_READ",
             {"case_id": str(row.id), "actor": principal.subject, "purpose": purpose},
         )
+        self._event(row.id, "ACCESS", principal, detail=purpose)
         await self.session.commit()
-        return self._case(
-            row, detail=True, narrative=narrative.narrative_json if narrative else None
+        events = (
+            await self.session.scalars(
+                select(CaseEvent)
+                .where(CaseEvent.case_id == row.id)
+                .order_by(CaseEvent.created_at)
+            )
+        ).all()
+        return self._case(row, detail=True, narrative=narrative, events=list(events))
+
+    async def assign(
+        self, case_id: UUID, body: AssignRequest, principal: Principal
+    ) -> dict:
+        row = await self.session.scalar(
+            select(ReviewCase)
+            .where(
+                ReviewCase.id == case_id, ReviewCase.owner_org == self._org(principal)
+            )
+            .with_for_update()
         )
+        if not row:
+            raise Problem(
+                404,
+                "REVIEW_CASE_NOT_FOUND",
+                "Review case not found",
+                "No review case was found.",
+            )
+        row.assigned_name = body.assignee
+        if row.state == "OPEN":
+            row.state = "IN_REVIEW"
+        self._event(row.id, "ASSIGN", principal, detail=body.assignee)
+        await self.session.commit()
+        return self._case(row)
 
     async def decide(
         self, case_id: UUID, body: DecisionRequest, key: str, principal: Principal
@@ -182,6 +235,9 @@ class ReviewApplication:
             ]
         )
         await self.session.flush()
+        self._event(
+            row.id, "DECISION", principal, code=body.decision, detail=body.reason
+        )
         await self._append_audit(
             str(row.owner_org),
             decision.id,
@@ -190,6 +246,26 @@ class ReviewApplication:
         )
         await self.session.commit()
         return self._decision(decision), False
+
+    def _event(
+        self,
+        case_id: UUID,
+        kind: str,
+        principal: Principal,
+        *,
+        code: str | None = None,
+        detail: str | None = None,
+    ) -> None:
+        self.session.add(
+            CaseEvent(
+                id=uuid4(),
+                case_id=case_id,
+                kind=kind,
+                actor_name=principal.username or principal.subject,
+                code=code,
+                detail=detail,
+            )
+        )
 
     async def _append_audit(
         self, partition: str, record_id: UUID, record_type: str, payload: dict
