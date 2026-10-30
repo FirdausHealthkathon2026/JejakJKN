@@ -18,4 +18,5 @@ create_domain_database verification_app verification_db "$VERIFICATION_DB_PASSWO
 create_domain_database review_app review_db "$REVIEW_DB_PASSWORD"
 create_domain_database simrs_a_app simrs_a_db "$SIMRS_A_DB_PASSWORD"
 create_domain_database simrs_b_app simrs_b_db "$SIMRS_B_DB_PASSWORD"
+create_domain_database bpjs_claim_app bpjs_claim_db "$BPJS_CLAIM_DB_PASSWORD"
 create_domain_database kc_user keycloak_db "$KEYCLOAK_DB_PASSWORD"

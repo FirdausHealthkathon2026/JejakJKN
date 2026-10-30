@@ -29,10 +29,12 @@ if [[ ! -f "$env_file" ]]; then
   review_db_password="$(openssl rand -hex 24)"
   simrs_a_db_password="$(openssl rand -hex 24)"
   simrs_b_db_password="$(openssl rand -hex 24)"
+  bpjs_claim_db_password="$(openssl rand -hex 24)"
   keycloak_admin_password="$(openssl rand -hex 24)"
   keycloak_db_password="$(openssl rand -hex 24)"
-  participant_key="$(openssl rand -hex 32)"
-  field_key="$(openssl rand -hex 32)"
+  # Must match scripts/generate-synthetic-bpjs-sample.py: the 1,000-claim seed is precomputed with these.
+  participant_key="0d70fe6c79ac335cbf6894b35f18c20a470000094d55f8a85ee7b937359baa8c"
+  field_key="76e615c41c9303747950656b727151dc65aced28b91aa891429beca78a695b7c"
   simrs_a_secret="$(openssl rand -hex 24)"
   simrs_b_secret="$(openssl rand -hex 24)"
   test_patient_secret="$(openssl rand -hex 24)"
@@ -48,6 +50,7 @@ if [[ ! -f "$env_file" ]]; then
     -e "s/REVIEW_DB_PASSWORD=change-me-local-only/REVIEW_DB_PASSWORD=$review_db_password/" \
     -e "s/SIMRS_A_DB_PASSWORD=change-me-local-only/SIMRS_A_DB_PASSWORD=$simrs_a_db_password/" \
     -e "s/SIMRS_B_DB_PASSWORD=change-me-local-only/SIMRS_B_DB_PASSWORD=$simrs_b_db_password/" \
+    -e "s/BPJS_CLAIM_DB_PASSWORD=change-me-local-only/BPJS_CLAIM_DB_PASSWORD=$bpjs_claim_db_password/" \
     -e "s/KEYCLOAK_ADMIN_PASSWORD=change-me-local-only/KEYCLOAK_ADMIN_PASSWORD=$keycloak_admin_password/" \
     -e "s/KEYCLOAK_DB_PASSWORD=change-me-local-only/KEYCLOAK_DB_PASSWORD=$keycloak_db_password/" \
     -e "s/SIMRS_A_CLIENT_SECRET=change-me-local-only/SIMRS_A_CLIENT_SECRET=$simrs_a_secret/" \

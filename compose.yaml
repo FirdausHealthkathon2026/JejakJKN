@@ -12,6 +12,7 @@ services:
       REVIEW_DB_PASSWORD: ${REVIEW_DB_PASSWORD}
       SIMRS_A_DB_PASSWORD: ${SIMRS_A_DB_PASSWORD}
       SIMRS_B_DB_PASSWORD: ${SIMRS_B_DB_PASSWORD}
+      BPJS_CLAIM_DB_PASSWORD: ${BPJS_CLAIM_DB_PASSWORD}
       KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -111,6 +112,7 @@ services:
       retries: 20
 
   encounter-outbox-worker:
+    restart: on-failure
     build:
       context: .
       dockerfile: services/encounter-service/Dockerfile
@@ -145,6 +147,7 @@ services:
       retries: 20
 
   evidence-outbox-worker:
+    restart: on-failure
     build:
       context: .
       dockerfile: services/evidence-service/Dockerfile
@@ -160,6 +163,7 @@ services:
       - internal
 
   evidence-event-worker:
+    restart: on-failure
     build:
       context: .
       dockerfile: services/evidence-service/Dockerfile
@@ -198,6 +202,7 @@ services:
       retries: 20
 
   verification-worker:
+    restart: on-failure
     build:
       context: .
       dockerfile: services/verification-service/Dockerfile
@@ -214,6 +219,7 @@ services:
       - internal
 
   verification-outbox-worker:
+    restart: on-failure
     build:
       context: .
       dockerfile: services/verification-service/Dockerfile
@@ -229,6 +235,7 @@ services:
       - internal
 
   verification-event-worker:
+    restart: on-failure
     build:
       context: .
       dockerfile: services/verification-service/Dockerfile
@@ -271,6 +278,7 @@ services:
       retries: 20
 
   review-outbox-worker:
+    restart: on-failure
     build:
       context: .
       dockerfile: services/review-service/Dockerfile
@@ -285,6 +293,7 @@ services:
       - internal
 
   review-event-worker:
+    restart: on-failure
     build:
       context: .
       dockerfile: services/review-service/Dockerfile
@@ -302,6 +311,7 @@ services:
       - internal
 
   narrative-worker:
+    restart: on-failure
     build:
       context: .
       dockerfile: services/narrative-worker/Dockerfile
@@ -382,6 +392,25 @@ services:
         condition: service_started
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8102/ready')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - internal
+
+  bpjs-claim-api:
+    build:
+      context: .
+      dockerfile: simulators/bpjs-claim-backend/Dockerfile
+    ports:
+      - "8103:8103"
+    environment:
+      BPJS_CLAIM_DATABASE_URL: postgresql+asyncpg://bpjs_claim_app:${BPJS_CLAIM_DB_PASSWORD}@postgres:5432/bpjs_claim_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8103/health')"]
       interval: 5s
       timeout: 3s
       retries: 20
