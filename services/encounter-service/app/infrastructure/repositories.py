@@ -88,8 +88,9 @@ class EncounterRepository:
                 if participant_lookup_key
                 else Patient.display_name_normalized_hmac == patient_name_hmac,
                 Encounter.organization_id == organization_id,
+                Encounter.status.in_({"CHECKED_OUT", "CLOSED_WITH_EXCEPTION"}),
                 Encounter.started_at <= end,
-                or_(Encounter.ended_at.is_(None), Encounter.ended_at >= start),
+                Encounter.ended_at >= start,
             )
             .order_by(Encounter.started_at, Encounter.id)
             .limit(limit + 1)

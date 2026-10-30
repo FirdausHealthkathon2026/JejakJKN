@@ -87,24 +87,34 @@ async def execute(run_id: UUID) -> None:
         evaluated: list[dict] = []
         all_snapshots: list[dict] = []
         for candidate in search["candidates"]:
-            for _ in range(20):
-                snapshot = await clients.pin_snapshot(candidate["encounter_id"])
-                if snapshot.get("attestation", {}).get("checked_out_at"):
-                    break
-                await asyncio.sleep(0.25)
+            snapshot = None
+            if candidate.get("status") in {"CHECKED_OUT", "CLOSED_WITH_EXCEPTION"}:
+                # Checkout reaches Evidence through the durable outbox and may lag during batch processing or recovery.
+                for _ in range(40):
+                    snapshot = await clients.pin_snapshot(candidate["encounter_id"])
+                    if snapshot.get("attestation", {}).get("checked_out_at"):
+                        break
+                    await asyncio.sleep(0.25)
+                else:
+                    snapshot = await clients.pin_snapshot(candidate["encounter_id"])
             else:
-                raise RuntimeError("Evidence checkout snapshot is not ready")
-            item_results = reconcile_items(claim_items, snapshot["items"])
-            matched = sum(item["match_result"] == "MATCHED" for item in item_results)
-            state = (
-                "ELIGIBLE_COMPLETE_MATCH"
-                if matched == len(claim_items)
-                else "ELIGIBLE_PARTIAL_MATCH"
-                if matched
-                else "REJECTED_ITEM_MISMATCH"
-            )
-            if not request.participant_lookup_key:
-                state = "REJECTED_IDENTITY_WEAK"
+                snapshot = await clients.pin_snapshot(candidate["encounter_id"])
+
+            if not snapshot.get("attestation", {}).get("checked_out_at"):
+                state = "REJECTED_ABSENT_CHECKOUT"
+                item_results = reconcile_items(claim_items, snapshot.get("items", []))
+            else:
+                item_results = reconcile_items(claim_items, snapshot["items"])
+                matched = sum(item["match_result"] == "MATCHED" for item in item_results)
+                state = (
+                    "ELIGIBLE_COMPLETE_MATCH"
+                    if matched == len(claim_items)
+                    else "ELIGIBLE_PARTIAL_MATCH"
+                    if matched
+                    else "REJECTED_ITEM_MISMATCH"
+                )
+                if not request.participant_lookup_key:
+                    state = "REJECTED_IDENTITY_WEAK"
             evaluated.append(
                 {
                     "candidate": candidate,
