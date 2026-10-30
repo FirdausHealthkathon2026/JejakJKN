@@ -17,6 +17,7 @@ class Principal:
     organization_id: UUID | None = None
     organization_type: str | None = None
     patient_id: UUID | None = None
+    username: str | None = None
 
 
 class JwtVerifier:
@@ -44,6 +45,7 @@ class JwtVerifier:
             organization_id=_uuid_or_none(claims.get("org_id")),
             organization_type=claims.get("org_type"),
             patient_id=_uuid_or_none(claims.get("patient_id")),
+            username=claims.get("preferred_username"),
         )
 
 
