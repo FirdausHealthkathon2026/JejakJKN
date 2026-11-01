@@ -51,6 +51,10 @@ Proyek menyediakan empat antarmuka web: **Portal Pasien**, **SIMRS A**, **SIMRS 
    `jejakjkn_bootstrap-data`. Jika ZIP diekstrak ulang tanpa `.env` dan `.secrets/`,
    script memulihkannya dari volume tersebut agar tetap cocok dengan database lama.
    Menjalankan perintah yang sama lagi akan memakai konfigurasi dan data yang ada.
+   Volume kosong dari percobaan startup yang gagal tetap bisa dipakai. Jika ada
+   database lama berisi data tanpa konfigurasi atau backup yang bisa dipulihkan,
+   script otomatis membuat penyimpanan demo baru untuk PostgreSQL, Redis, dan
+   RabbitMQ. Volume lama tetap disimpan; data lamanya tidak dimuat ke demo baru.
 
 3. Buka aplikasi melalui browser:
 
@@ -80,11 +84,11 @@ docker compose logs --tail=100 keycloak postgres
 ```
 
 Pesan `Skipping initialization` berarti PostgreSQL memakai data lama. Jalankan
-`bash scripts.sh` agar konfigurasi yang tersimpan dipakai kembali. Untuk instalasi
-lama sebelum backup otomatis tersedia, `.env` asli tetap diperlukan; script akan
-berhenti jika database lama ditemukan tanpa konfigurasi yang dapat dipulihkan.
-Data tidak dihapus otomatis. Simpan `.env` dan `.secrets/` bersama backup database
-jika memindahkan instalasi ke komputer lain.
+`bash scripts.sh` agar konfigurasi yang tersimpan dipakai kembali. Jika `.env`
+dan backup konfigurasi sama-sama hilang, script menyiapkan demo baru pada volume
+terpisah dan mempertahankan volume database lama. Untuk membuka kembali data
+lama, konfigurasi dan kunci aslinya tetap diperlukan. Simpan `.env` dan `.secrets/`
+bersama backup database jika memindahkan instalasi ke komputer lain.
 
 ### Menghentikan dan Menjalankan Kembali
 

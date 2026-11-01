@@ -13,9 +13,9 @@ if ! docker compose version >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; th
   exit 1
 fi
 
-has_database=0
+set --
 if docker volume inspect "${project_name}_postgres-data" >/dev/null 2>&1; then
-  has_database=1
+  set -- --mount "type=volume,source=${project_name}_postgres-data,target=/database,readonly"
 fi
 
 docker_project_dir="$project_dir"
@@ -27,9 +27,9 @@ case "${OSTYPE:-}" in
 esac
 
 # Use Node's built-in crypto inside Docker; no host Node, Python, or OpenSSL needed.
-docker run --rm \
+docker run --rm "$@" \
   --mount "type=bind,source=$docker_project_dir,target=/workspace" \
   --mount "type=volume,source=${project_name}_bootstrap-data,target=/state" \
   --workdir /workspace \
-  -e "LOCAL_UID=$(id -u)" -e "LOCAL_GID=$(id -g)" -e "HAS_DATABASE=$has_database" \
+  -e "LOCAL_UID=$(id -u)" -e "LOCAL_GID=$(id -g)" \
   node:22-alpine node scripts/bootstrap-dev.mjs
