@@ -29,19 +29,28 @@ Proyek menyediakan empat antarmuka web: **Portal Pasien**, **SIMRS A**, **SIMRS 
 
 - Docker Engine atau Docker Desktop sudah terpasang dan berjalan.
 - Docker Compose v2 tersedia melalui perintah `docker compose`.
-- Bash dan OpenSSL tersedia. Untuk Windows, gunakan Git Bash atau WSL.
+- Bash tersedia. Untuk Windows, gunakan Git Bash atau WSL.
 - Koneksi internet tersedia untuk mengunduh image dan dependency pada build pertama.
 
 ### Menjalankan Pertama Kali
 
-1. Buka terminal di folder utama repositori `JejakJKN`, yaitu folder yang berisi `compose.yaml`.
+1. Download dan ekstrak ZIP repositori, lalu buka terminal di folder yang berisi `scripts.sh` dan `compose.yaml`.
 2. Jalankan:
 
    ```bash
-   bash scripts/demo-up.sh
+   bash scripts.sh
    ```
 
-   Script ini menyiapkan `.env` dan kunci lokal di `.secrets/`, membangun image, menjalankan layanan, menerapkan migrasi database, serta mengisi data demo termasuk fixture benchmark 1.000 klaim. Tunggu hingga script selesai dan menampilkan alamat aplikasi.
+   Tidak perlu mengedit `.env`, memasang Node/Python/OpenSSL, atau mengisi API key.
+   Script menyiapkan konfigurasi dan kunci melalui Docker, membangun image,
+   menerapkan migrasi, serta mengisi data demo termasuk fixture 1.000 klaim.
+   Sebelum menampilkan alamat aplikasi, script memeriksa koneksi database, login,
+   API, dan keempat portal. Tunggu sampai muncul `JejakJKN siap dipakai.`
+
+   Konfigurasi dan kunci dicadangkan otomatis di volume Docker
+   `jejakjkn_bootstrap-data`. Jika ZIP diekstrak ulang tanpa `.env` dan `.secrets/`,
+   script memulihkannya dari volume tersebut agar tetap cocok dengan database lama.
+   Menjalankan perintah yang sama lagi akan memakai konfigurasi dan data yang ada.
 
 3. Buka aplikasi melalui browser:
 
@@ -63,6 +72,20 @@ docker compose ps
 docker compose logs --tail=100
 ```
 
+Jika Keycloak berhenti dengan `password authentication failed for user "kc_user"`,
+periksa log berikut:
+
+```bash
+docker compose logs --tail=100 keycloak postgres
+```
+
+Pesan `Skipping initialization` berarti PostgreSQL memakai data lama. Jalankan
+`bash scripts.sh` agar konfigurasi yang tersimpan dipakai kembali. Untuk instalasi
+lama sebelum backup otomatis tersedia, `.env` asli tetap diperlukan; script akan
+berhenti jika database lama ditemukan tanpa konfigurasi yang dapat dipulihkan.
+Data tidak dihapus otomatis. Simpan `.env` dan `.secrets/` bersama backup database
+jika memindahkan instalasi ke komputer lain.
+
 ### Menghentikan dan Menjalankan Kembali
 
 Hentikan layanan dengan tetap menyimpan data lokal:
@@ -74,7 +97,7 @@ docker compose down
 Setelah setup pertama selesai, jalankan kembali layanan dengan:
 
 ```bash
-docker compose up -d --wait
+bash scripts.sh
 ```
 
 Perintah `docker compose down -v` menghapus volume database dan data lokal. Gunakan hanya jika ingin mereset seluruh data demo.

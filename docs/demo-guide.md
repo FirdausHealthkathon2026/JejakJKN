@@ -5,7 +5,7 @@ Butuh Docker Desktop yang sedang berjalan dan Git Bash.
 ## Menyalakan
 
 ```bash
-bash scripts/demo-up.sh          # menyalakan semua layanan, migrasi, dan seed
+bash scripts.sh                 # menyalakan semua layanan, migrasi, dan seed
 python scripts/demo-smoke.py     # opsional: cek alur utama lewat API
 ```
 
@@ -16,7 +16,7 @@ python scripts/demo-smoke.py     # opsional: cek alur utama lewat API
 | Verifikator | http://localhost:5175 | tombol di halaman masuk |
 | SIMRS B | http://localhost:5176 | tanpa login |
 
-Reset data demo: `docker compose down -v`, lalu jalankan `scripts/demo-up.sh` lagi.
+Reset data demo: `docker compose down -v`, lalu jalankan `bash scripts.sh` lagi.
 
 ## Alur utama
 
