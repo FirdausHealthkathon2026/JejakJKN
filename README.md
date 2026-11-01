@@ -17,8 +17,6 @@ Proyek menyediakan empat antarmuka web: **Portal Pasien**, **SIMRS A**, **SIMRS 
 
 ## Anggota Pengembang
 
-Nama lengkap, NIM, dan pembagian peran anggota belum dicantumkan dalam dokumentasi proyek. Lengkapi tabel berikut dengan data tim.
-
 | No. | Nama Lengkap | 
 | --- | --- | 
 | 1 | Fikrifalah Muslich | 
