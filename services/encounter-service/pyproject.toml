@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "encounter-service"
+version = "0.1.0"
+description = "Encounter & QR Service — owns encounter_db and Redis QR nonce reservation."
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"

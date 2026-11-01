@@ -1,0 +1,25 @@
+{
+  "name": "@jejakjkn/simrs-a-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SIMRS-A Web Simulator — Hospital queue, QR scanner, clinical/pharmacy recording, and adapter sync monitor.",
+  "type": "module",
+  "dependencies": {
+    "@jejakjkn/web-qr-scanner": "file:../../libs/web-qr-scanner",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.20",
+    "@types/react-dom": "18.3.6",
+    "@vitejs/plugin-react": "4.4.1",
+    "typescript": "5.8.3",
+    "vite": "6.4.5",
+    "vitest": "5.0.5"
+  },
+  "scripts": {
+    "dev": "vite --port 5174",
+    "build": "tsc && vite build",
+    "test": "vitest run"
+  }
+}

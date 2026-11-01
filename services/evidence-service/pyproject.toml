@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evidence-service"
+version = "0.1.0"
+description = "Evidence & Confirmation Service — owns evidence_db, immutable versions, and checkout snapshots."
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+asyncio_default_test_loop_scope = "function"

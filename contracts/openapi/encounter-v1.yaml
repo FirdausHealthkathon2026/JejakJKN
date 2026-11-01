@@ -1,0 +1,311 @@
+openapi: 3.1.0
+info:
+  title: JejakJKN Encounter & QR Service API
+  version: 1.0.0
+x-implementation-status: implemented-gate-1
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/patient/qr-tokens:
+    post:
+      operationId: issuePatientQrToken
+      summary: Issue a 60-second single-use QR token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/IssueQrRequest'}
+      responses:
+        '201':
+          description: QR token issued
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QrTokenResponse'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '503': {$ref: '#/components/responses/Problem'}
+  /api/v1/patient/encounters:
+    get:
+      operationId: listPatientEncounters
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 50, default: 20}}
+        - {name: cursor, in: query, schema: {type: [string, 'null'], format: uuid}}
+      responses:
+        '200':
+          description: Patient-owned encounters; never includes live clinical stages
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EncounterListResponse'}
+        '401': {$ref: '#/components/responses/Problem'}
+  /api/v1/patient/encounters/{encounter_id}:
+    get:
+      operationId: getPatientEncounter
+      parameters:
+        - {$ref: '#/components/parameters/EncounterId'}
+      responses:
+        '200':
+          description: Patient-owned encounter status
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EncounterSummary'}
+        '404': {$ref: '#/components/responses/Problem'}
+  /api/v1/integrations/qr/check-in:
+    post:
+      operationId: redeemQrCheckIn
+      parameters:
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RedeemQrRequest'}
+      responses:
+        '201':
+          description: First successful redemption
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CheckInResponse'}
+        '200':
+          description: Idempotent replay by the same scanner and key
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CheckInResponse'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '409': {$ref: '#/components/responses/Problem'}
+        '410': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '503': {$ref: '#/components/responses/Problem'}
+  /api/v1/integrations/qr/check-out:
+    post:
+      operationId: redeemQrCheckOut
+      parameters:
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RedeemQrRequest'}
+      responses:
+        '200':
+          description: Encounter checked out or same-key replay
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CheckOutResponse'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '409': {$ref: '#/components/responses/Problem'}
+        '410': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '503': {$ref: '#/components/responses/Problem'}
+  /api/v1/integrations/encounters/{encounter_id}/exceptions:
+    post:
+      operationId: recordEncounterException
+      parameters:
+        - {$ref: '#/components/parameters/EncounterId'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ExceptionRequest'}
+      responses:
+        '201':
+          description: Exception recorded
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ExceptionResponse'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '409': {$ref: '#/components/responses/Problem'}
+  /internal/v1/encounters/{encounter_id}/eligibility:
+    get:
+      operationId: getEncounterEligibilityInternal
+      parameters:
+        - {$ref: '#/components/parameters/EncounterId'}
+      responses:
+        '200':
+          description: Encounter metadata for an internal caller
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EligibilityResponse'}
+        '404': {$ref: '#/components/responses/Problem'}
+  /internal/v1/encounters/search-candidates:
+    post:
+      operationId: searchCandidateEncountersInternal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CandidateSearchRequest'}
+      responses:
+        '200':
+          description: Every candidate or an explicit truncation indicator
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CandidateSearchResponse'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    EncounterId:
+      name: encounter_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: {type: string, format: uuid}
+  responses:
+    Problem:
+      description: RFC 9457 problem detail
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, detail, instance, error_code, request_id, correlation_id]
+      properties:
+        type: {type: string, format: uri}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}
+        error_code: {type: string}
+        request_id: {type: string}
+        correlation_id: {type: string}
+      additionalProperties: false
+    IssueQrRequest:
+      type: object
+      required: [purpose]
+      properties:
+        purpose: {type: string, enum: [CHECK_IN, CHECK_OUT]}
+        encounter_id: {type: [string, 'null'], format: uuid, default: null}
+        facility_hint: {type: [string, 'null'], maxLength: 64, default: null}
+      additionalProperties: false
+    QrTokenResponse:
+      type: object
+      required: [token, purpose, expires_at, ttl_seconds]
+      properties:
+        token: {type: string}
+        purpose: {type: string, enum: [CHECK_IN, CHECK_OUT]}
+        expires_at: {type: string, format: date-time}
+        ttl_seconds: {type: integer, const: 60}
+      additionalProperties: false
+    RedeemQrRequest:
+      type: object
+      required: [qr_token, facility_external_code, scanner_external_id]
+      properties:
+        qr_token: {type: string, minLength: 32}
+        facility_external_code: {type: string, maxLength: 64}
+        scanner_external_id: {type: string, maxLength: 128}
+        external_visit_reference: {type: [string, 'null'], maxLength: 128, default: null}
+      additionalProperties: false
+    CheckInResponse:
+      type: object
+      required: [encounter_id, check_in_status, encounter_status, created_at]
+      properties:
+        encounter_id: {type: string, format: uuid}
+        check_in_status: {const: QR_VERIFIED}
+        encounter_status: {const: OPEN}
+        created_at: {type: string, format: date-time}
+      additionalProperties: false
+    CheckOutResponse:
+      type: object
+      required: [encounter_id, encounter_status, checked_out_at]
+      properties:
+        encounter_id: {type: string, format: uuid}
+        encounter_status: {const: CHECKED_OUT}
+        checked_out_at: {type: string, format: date-time}
+      additionalProperties: false
+    EncounterSummary:
+      type: object
+      required: [encounter_id, facility_code, facility_display_name, service_type, status, presence_status, started_at, check_in_successful, check_out_successful, confirmation_status]
+      properties:
+        encounter_id: {type: string, format: uuid}
+        facility_code: {type: string}
+        facility_display_name: {type: string}
+        service_type: {type: string, enum: [OUTPATIENT, INPATIENT, EMERGENCY]}
+        status: {type: string, enum: [OPEN, CHECKED_OUT, CLOSED_WITH_EXCEPTION, CANCELLED]}
+        presence_status: {type: string, enum: [QR_VERIFIED, EXCEPTION_DOCUMENTED, UNVERIFIED]}
+        started_at: {type: string, format: date-time}
+        ended_at: {type: [string, 'null'], format: date-time}
+        check_in_successful: {type: boolean}
+        check_out_successful: {type: boolean}
+        confirmation_status: {const: NOT_AVAILABLE}
+      additionalProperties: false
+    EncounterListResponse:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/EncounterSummary'}}
+        next_cursor: {type: [string, 'null'], format: uuid}
+      additionalProperties: false
+    ExceptionRequest:
+      type: object
+      required: [exception_phase, reason_code, facility_external_code, approved_by]
+      properties:
+        exception_phase: {type: string, enum: [CHECK_IN, CHECK_OUT]}
+        reason_code: {type: string, enum: [NO_SMARTPHONE, EMERGENCY_UNCONSCIOUS, QR_DEVICE_FAILURE, NETWORK_OUTAGE, PATIENT_INCAPACITATED]}
+        patient_id: {type: [string, 'null'], format: uuid}
+        facility_external_code: {type: string}
+        service_type: {type: string, enum: [OUTPATIENT, INPATIENT, EMERGENCY], default: OUTPATIENT}
+        approved_by: {type: string}
+        evidence_ref: {type: [string, 'null']}
+        notes: {type: [string, 'null'], maxLength: 500}
+      additionalProperties: false
+    ExceptionResponse:
+      type: object
+      required: [encounter_id, encounter_status, presence_status]
+      properties:
+        encounter_id: {type: string, format: uuid}
+        encounter_status: {type: string}
+        presence_status: {const: EXCEPTION_DOCUMENTED}
+      additionalProperties: false
+    CandidateSearchRequest:
+      type: object
+      oneOf:
+        - required: [participant_lookup_key]
+        - required: [patient_name_hmac]
+      required: [facility_namespace, facility_code, service_period_start, service_period_end]
+      properties:
+        participant_lookup_key: {type: [string, 'null'], minLength: 64, maxLength: 64}
+        patient_name_hmac: {type: [string, 'null'], minLength: 64, maxLength: 64}
+        facility_namespace: {type: string}
+        facility_code: {type: string}
+        service_period_start: {type: string, format: date-time}
+        service_period_end: {type: string, format: date-time}
+        safety_limit: {type: integer, minimum: 1, maximum: 10, default: 10}
+      additionalProperties: false
+    CandidateEncounter:
+      type: object
+      required: [encounter_id, patient_id, organization_id, status, presence_status, service_type, started_at, revision]
+      properties:
+        encounter_id: {type: string, format: uuid}
+        patient_id: {type: string, format: uuid}
+        organization_id: {type: string, format: uuid}
+        status: {type: string}
+        presence_status: {type: string}
+        service_type: {type: string}
+        started_at: {type: string, format: date-time}
+        ended_at: {type: [string, 'null'], format: date-time}
+        revision: {type: integer, minimum: 1}
+      additionalProperties: false
+    CandidateSearchResponse:
+      type: object
+      required: [candidates, truncated_by_limit]
+      properties:
+        candidates: {type: array, items: {$ref: '#/components/schemas/CandidateEncounter'}, maxItems: 10}
+        truncated_by_limit: {type: boolean}
+      additionalProperties: false
+    EligibilityResponse:
+      allOf:
+        - {$ref: '#/components/schemas/CandidateEncounter'}
+        - {type: object, required: [eligible], properties: {eligible: {type: boolean}}}

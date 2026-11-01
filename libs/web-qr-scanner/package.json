@@ -1,0 +1,18 @@
+{
+  "name": "@jejakjkn/web-qr-scanner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.jsx"
+    }
+  },
+  "dependencies": {
+    "qr-scanner": "1.4.2"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  }
+}

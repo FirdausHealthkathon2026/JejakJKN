@@ -1,0 +1,17 @@
+"""Small, explicit Gate 2/3 value sets."""
+
+from enum import StrEnum
+
+
+class SyncStatus(StrEnum):
+    RECEIVING = "RECEIVING"
+    SYNC_COMPLETE = "SYNC_COMPLETE"
+    INCOMPLETE_SYNC = "INCOMPLETE_SYNC"
+    QUARANTINE_PENDING = "QUARANTINE_PENDING"
+
+
+class SnapshotStatus(StrEnum):
+    READY = "READY"
+    INCOMPLETE_SYNC = "INCOMPLETE_SYNC"
+    OUTDATED = "OUTDATED"
+    RECONFIRMATION_REQUIRED = "RECONFIRMATION_REQUIRED"

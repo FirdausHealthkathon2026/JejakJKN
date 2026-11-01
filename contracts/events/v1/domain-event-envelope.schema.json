@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jejakjkn.local/contracts/events/v1/domain-event-envelope.schema.json",
+  "title": "JejakJKN Domain Event Envelope v1",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "producer",
+    "organization_id",
+    "aggregate_id",
+    "aggregate_revision",
+    "occurred_at",
+    "published_at",
+    "correlation_id",
+    "data"
+  ],
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid" },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "encounter.opened.v1",
+        "encounter.checked_out.v1",
+        "encounter.exception_recorded.v1",
+        "identity.mapping_changed.v1",
+        "evidence.recorded.v1",
+        "evidence.corrected.v1",
+        "evidence.cancelled.v1",
+        "patient.summary_ready.v1",
+        "patient.confirmation_recorded.v1",
+        "verification.requested.v1",
+        "verification.completed.v1",
+        "verification.stale.v1",
+        "verification.duplicate_detected.v1",
+        "review.decision_recorded.v1"
+      ]
+    },
+    "schema_version": { "type": "string", "const": "1.0" },
+    "producer": {
+      "type": "string",
+      "enum": ["encounter-service", "evidence-service", "verification-service", "review-service", "narrative-worker"]
+    },
+    "organization_id": { "type": "string" },
+    "aggregate_id": { "type": "string" },
+    "aggregate_revision": { "type": "integer", "minimum": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "published_at": { "type": "string", "format": "date-time" },
+    "correlation_id": { "type": "string" },
+    "causation_id": { "type": ["string", "null"] },
+    "data": { "type": "object" }
+  },
+  "additionalProperties": false
+}

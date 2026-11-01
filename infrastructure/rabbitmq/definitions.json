@@ -1,0 +1,35 @@
+{
+  "users": [
+    {"name": "guest", "password_hash": "amprbkedOWi/oev9wteRBGv5/qzaMtjpxxKxQgGdcxpE8+A1", "hashing_algorithm": "rabbit_password_hashing_sha256", "tags": ["administrator"]}
+  ],
+  "vhosts": [{"name": "/"}],
+  "permissions": [
+    {"user": "guest", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*"}
+  ],
+  "exchanges": [
+    {"name": "jejakjkn.domain.v1", "vhost": "/", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {}},
+    {"name": "jejakjkn.dlx.v1", "vhost": "/", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {}}
+  ],
+  "queues": [
+    {"name": "evidence.encounter-events.q", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {"x-dead-letter-exchange": "jejakjkn.dlx.v1"}},
+    {"name": "verification.domain-events.q", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {"x-dead-letter-exchange": "jejakjkn.dlx.v1"}},
+    {"name": "review.verification-events.q", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {"x-dead-letter-exchange": "jejakjkn.dlx.v1"}},
+    {"name": "narrative.verification-events.q", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {"x-dead-letter-exchange": "jejakjkn.dlx.v1"}},
+    {"name": "evidence.encounter-events.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {}},
+    {"name": "verification.domain-events.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {}},
+    {"name": "review.verification-events.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {}},
+    {"name": "narrative.verification-events.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {}}
+  ],
+  "bindings": [
+    {"source": "jejakjkn.domain.v1", "vhost": "/", "destination": "evidence.encounter-events.q", "destination_type": "queue", "routing_key": "encounter.*.v1", "arguments": {}},
+    {"source": "jejakjkn.domain.v1", "vhost": "/", "destination": "verification.domain-events.q", "destination_type": "queue", "routing_key": "verification.requested.v1", "arguments": {}},
+    {"source": "jejakjkn.domain.v1", "vhost": "/", "destination": "verification.domain-events.q", "destination_type": "queue", "routing_key": "evidence.*.v1", "arguments": {}},
+    {"source": "jejakjkn.domain.v1", "vhost": "/", "destination": "verification.domain-events.q", "destination_type": "queue", "routing_key": "patient.confirmation_recorded.v1", "arguments": {}},
+    {"source": "jejakjkn.domain.v1", "vhost": "/", "destination": "review.verification-events.q", "destination_type": "queue", "routing_key": "verification.*.v1", "arguments": {}},
+    {"source": "jejakjkn.domain.v1", "vhost": "/", "destination": "narrative.verification-events.q", "destination_type": "queue", "routing_key": "verification.completed.v1", "arguments": {}},
+    {"source": "jejakjkn.dlx.v1", "vhost": "/", "destination": "evidence.encounter-events.dlq", "destination_type": "queue", "routing_key": "encounter.*.v1", "arguments": {}},
+    {"source": "jejakjkn.dlx.v1", "vhost": "/", "destination": "verification.domain-events.dlq", "destination_type": "queue", "routing_key": "verification.requested.v1", "arguments": {}},
+    {"source": "jejakjkn.dlx.v1", "vhost": "/", "destination": "review.verification-events.dlq", "destination_type": "queue", "routing_key": "verification.*.v1", "arguments": {}},
+    {"source": "jejakjkn.dlx.v1", "vhost": "/", "destination": "narrative.verification-events.dlq", "destination_type": "queue", "routing_key": "verification.completed.v1", "arguments": {}}
+  ]
+}

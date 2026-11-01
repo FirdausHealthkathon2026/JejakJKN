@@ -1,0 +1,634 @@
+{
+  "realm": "jejakjkn-dev",
+  "enabled": true,
+  "displayName": "JejakJKN Synthetic Development",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": false,
+  "roles": {
+    "realm": [
+      {
+        "name": "patient"
+      },
+      {
+        "name": "simrs_scanner"
+      },
+      {
+        "name": "simrs_clinical_sender"
+      },
+      {
+        "name": "simrs_pharmacy_sender"
+      },
+      {
+        "name": "verifier"
+      },
+      {
+        "name": "review_supervisor"
+      },
+      {
+        "name": "platform_admin"
+      },
+      {
+        "name": "internal_service"
+      }
+    ]
+  },
+  "clientScopes": [
+    {
+      "name": "roles",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "jejakjkn-audience",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "jejakjkn-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "jejakjkn-api",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "patient-context",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "patient-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "patient_id",
+            "claim.name": "patient_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "organization-context",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "organization-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "org_id",
+            "claim.name": "org_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "organization-type",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "org_type",
+            "claim.name": "org_type",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "encounter:checkin",
+      "protocol": "openid-connect"
+    },
+    {
+      "name": "encounter:checkout",
+      "protocol": "openid-connect"
+    },
+    {
+      "name": "encounter:exception",
+      "protocol": "openid-connect"
+    },
+    {
+      "name": "evidence:write",
+      "protocol": "openid-connect"
+    },
+    {
+      "name": "evidence:correct",
+      "protocol": "openid-connect"
+    },
+    {
+      "name": "evidence:cancel",
+      "protocol": "openid-connect"
+    },
+    {
+      "name": "evidence:readstatus",
+      "protocol": "openid-connect"
+    },
+    {
+      "name": "verification:create",
+      "protocol": "openid-connect"
+    },
+    {
+      "name": "verification:read",
+      "protocol": "openid-connect"
+    },
+    {
+      "name": "verification:recheck",
+      "protocol": "openid-connect"
+    },
+    {
+      "name": "review:read",
+      "protocol": "openid-connect"
+    },
+    {
+      "name": "review:decide",
+      "protocol": "openid-connect"
+    },
+    {
+      "name": "basic",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "sub",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "config": {
+            "introspection.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "web-origins",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "allowed web origins",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-allowed-origins-mapper",
+          "config": {}
+        }
+      ]
+    }
+  ],
+  "defaultDefaultClientScopes": [
+    "basic"
+  ],
+  "clients": [
+    {
+      "clientId": "patient-web",
+      "name": "Patient Simulator",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": [
+        "basic",
+        "roles",
+        "web-origins",
+        "jejakjkn-audience",
+        "patient-context"
+      ]
+    },
+    {
+      "clientId": "simrs-a-adapter",
+      "name": "SIMRS A Adapter",
+      "publicClient": false,
+      "secret": "${SIMRS_A_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "roles",
+        "jejakjkn-audience",
+        "encounter:checkin",
+        "encounter:checkout",
+        "encounter:exception",
+        "evidence:write",
+        "evidence:correct",
+        "evidence:cancel",
+        "evidence:readstatus"
+      ],
+      "protocolMappers": [
+        {
+          "name": "organization-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "org_id",
+            "claim.value": "00000000-0000-4000-8000-000000000001",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "organization-type",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "org_type",
+            "claim.value": "FASKES",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "simrs-b-adapter",
+      "name": "SIMRS B Adapter",
+      "publicClient": false,
+      "secret": "${SIMRS_B_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "roles",
+        "jejakjkn-audience",
+        "encounter:checkin",
+        "encounter:checkout",
+        "encounter:exception",
+        "evidence:write",
+        "evidence:correct",
+        "evidence:cancel",
+        "evidence:readstatus"
+      ],
+      "protocolMappers": [
+        {
+          "name": "organization-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "org_id",
+            "claim.value": "00000000-0000-4000-8000-000000000002",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "organization-type",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "org_type",
+            "claim.value": "FASKES",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "verifier-web",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "http://localhost:5175/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5175"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": [
+        "basic",
+        "roles",
+        "web-origins",
+        "jejakjkn-audience",
+        "organization-context",
+        "verification:create",
+        "verification:read",
+        "verification:recheck",
+        "review:read",
+        "review:decide"
+      ]
+    },
+    {
+      "clientId": "verification-service",
+      "name": "Verification Internal Service",
+      "publicClient": false,
+      "secret": "${VERIFICATION_SERVICE_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "roles",
+        "jejakjkn-audience"
+      ]
+    },
+    {
+      "clientId": "review-service",
+      "name": "Review Internal Service",
+      "publicClient": false,
+      "secret": "${REVIEW_SERVICE_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "roles",
+        "jejakjkn-audience"
+      ]
+    },
+    {
+      "clientId": "test-verifier-client",
+      "name": "Synthetic Integration Test Verifier",
+      "publicClient": false,
+      "secret": "${TEST_VERIFIER_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "roles",
+        "jejakjkn-audience",
+        "verification:create",
+        "verification:read",
+        "verification:recheck",
+        "review:read",
+        "review:decide"
+      ],
+      "protocolMappers": [
+        {
+          "name": "organization-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "org_id",
+            "claim.value": "20000000-0000-4000-8000-000000000001",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "organization-type",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "org_type",
+            "claim.value": "VERIFIER",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "test-patient-client",
+      "name": "Synthetic Integration Test Patient",
+      "publicClient": false,
+      "secret": "${TEST_PATIENT_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "roles",
+        "jejakjkn-audience"
+      ],
+      "protocolMappers": [
+        {
+          "name": "patient-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "patient_id",
+            "claim.value": "10000000-0000-4000-8000-000000000001",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "test-patient-2-client",
+      "name": "Synthetic Integration Test Patient 2",
+      "publicClient": false,
+      "secret": "${TEST_PATIENT_2_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "roles",
+        "jejakjkn-audience"
+      ],
+      "protocolMappers": [
+        {
+          "name": "patient-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "patient_id",
+            "claim.value": "10000000-0000-4000-8000-000000000002",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "patient01",
+      "enabled": true,
+      "firstName": "Pasien",
+      "lastName": "Sintetis 01",
+      "email": "patient01@bpjs-kesehatan.go.id",
+      "emailVerified": true,
+      "attributes": {
+        "patient_id": [
+          "10000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "realmRoles": [
+        "patient"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "synthetic-patient-01",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "verifier01",
+      "enabled": true,
+      "firstName": "Verifier",
+      "lastName": "Sintetis 01",
+      "email": "verifier01@bpjs-kesehatan.go.id",
+      "emailVerified": true,
+      "attributes": {
+        "org_id": [
+          "20000000-0000-4000-8000-000000000001"
+        ],
+        "org_type": [
+          "VERIFIER"
+        ]
+      },
+      "realmRoles": [
+        "verifier"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "synthetic-verifier-01",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "verifier02",
+      "enabled": true,
+      "firstName": "Staf",
+      "lastName": "Sintetis 02",
+      "email": "verifier02@bpjs-kesehatan.go.id",
+      "emailVerified": true,
+      "attributes": {
+        "org_id": [
+          "20000000-0000-4000-8000-000000000001"
+        ],
+        "org_type": [
+          "VERIFIER"
+        ]
+      },
+      "realmRoles": [
+        "verifier"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "synthetic-verifier-02",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "supervisor01",
+      "enabled": true,
+      "firstName": "Staf",
+      "lastName": "Supervisor 01",
+      "email": "supervisor01@bpjs-kesehatan.go.id",
+      "emailVerified": true,
+      "attributes": {
+        "org_id": [
+          "20000000-0000-4000-8000-000000000001"
+        ],
+        "org_type": [
+          "VERIFIER"
+        ]
+      },
+      "realmRoles": [
+        "verifier",
+        "review_supervisor"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "synthetic-supervisor-01",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "service-account-verification-service",
+      "enabled": true,
+      "serviceAccountClientId": "verification-service",
+      "realmRoles": [
+        "internal_service"
+      ]
+    },
+    {
+      "username": "service-account-review-service",
+      "enabled": true,
+      "serviceAccountClientId": "review-service",
+      "realmRoles": [
+        "internal_service"
+      ]
+    },
+    {
+      "username": "service-account-test-verifier-client",
+      "enabled": true,
+      "serviceAccountClientId": "test-verifier-client",
+      "realmRoles": [
+        "verifier",
+        "review_supervisor"
+      ]
+    },
+    {
+      "username": "service-account-simrs-a-adapter",
+      "enabled": true,
+      "serviceAccountClientId": "simrs-a-adapter",
+      "realmRoles": [
+        "simrs_scanner",
+        "simrs_clinical_sender",
+        "simrs_pharmacy_sender"
+      ]
+    },
+    {
+      "username": "service-account-simrs-b-adapter",
+      "enabled": true,
+      "serviceAccountClientId": "simrs-b-adapter",
+      "realmRoles": [
+        "simrs_scanner",
+        "simrs_clinical_sender",
+        "simrs_pharmacy_sender"
+      ]
+    },
+    {
+      "username": "service-account-test-patient-client",
+      "enabled": true,
+      "serviceAccountClientId": "test-patient-client",
+      "realmRoles": [
+        "patient"
+      ]
+    },
+    {
+      "username": "service-account-test-patient-2-client",
+      "enabled": true,
+      "serviceAccountClientId": "test-patient-2-client",
+      "realmRoles": [
+        "patient"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@jejakjkn/patient-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Patient App Simulator — QR IN/OUT (60s) & post-checkout summary confirmation only (NO live stage timeline).",
+  "type": "module",
+  "dependencies": {
+    "keycloak-js": "26.2.1",
+    "qrcode.react": "4.2.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.20",
+    "@types/react-dom": "18.3.6",
+    "@vitejs/plugin-react": "4.4.1",
+    "typescript": "5.8.3",
+    "vite": "6.4.5",
+    "vitest": "5.0.5"
+  },
+  "scripts": {
+    "dev": "vite --port 5173",
+    "build": "tsc && vite build",
+    "test": "vitest run"
+  }
+}

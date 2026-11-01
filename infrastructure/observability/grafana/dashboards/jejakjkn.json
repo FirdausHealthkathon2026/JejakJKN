@@ -1,0 +1,16 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "panels": [
+    {"type": "timeseries", "title": "Request rate by service", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}, "targets": [{"expr": "sum by (service) (rate(http_requests_total[1m]))", "legendFormat": "{{service}}"}]},
+    {"type": "timeseries", "title": "HTTP errors", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}, "targets": [{"expr": "sum by (service,status) (rate(http_requests_total{status=~\"4..|5..\"}[1m]))", "legendFormat": "{{service}} {{status}}"}]},
+    {"type": "table", "title": "Mean request duration (seconds)", "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}, "targets": [{"expr": "sum by (service,route) (rate(http_request_duration_seconds_sum[5m])) / clamp_min(sum by (service,route) (rate(http_requests_total[5m])), 0.001)", "format": "table", "instant": true}]}
+  ],
+  "schemaVersion": 39,
+  "tags": ["jejakjkn", "gate-8"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "title": "JejakJKN Staging Health",
+  "uid": "jejakjkn-staging",
+  "version": 1
+}
