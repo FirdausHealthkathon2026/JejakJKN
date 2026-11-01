@@ -47,11 +47,28 @@ test('fresh ZIP, rerun, and re-extracted ZIP keep working credentials and signin
   }
 });
 
-test('existing database without recoverable credentials never receives new credentials', () => {
+test('initialized database without config gets separate demo storage, preserved on subsequent downloads', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jejakjkn-orphan-'));
   try {
-    assert.throws(() => bootstrap(root, path.join(root, 'state'), true), /Database lama/);
-    assert(!fs.existsSync(path.join(root, '.env')));
+    const state = path.join(root, 'state');
+    fs.copyFileSync(new URL('../.env.example', import.meta.url), path.join(root, '.env.example'));
+    bootstrap(root, state, true);
+    const env = fs.readFileSync(path.join(root, '.env'), 'utf8');
+    assert.match(env, /^DEMO_DATA_SUFFIX=-demo-[a-f0-9]{12}$/m);
+    fs.unlinkSync(path.join(root, '.env'));
+    bootstrap(root, state, true);
+    assert.equal(fs.readFileSync(path.join(root, '.env'), 'utf8'), env);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('empty database volume does not switch the default demo storage', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jejakjkn-empty-'));
+  try {
+    fs.copyFileSync(new URL('../.env.example', import.meta.url), path.join(root, '.env.example'));
+    bootstrap(root, path.join(root, 'state'), false);
+    assert(!fs.readFileSync(path.join(root, '.env'), 'utf8').includes('DEMO_DATA_SUFFIX='));
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

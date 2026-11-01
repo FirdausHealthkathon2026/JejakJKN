@@ -3,7 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createPrivateKey, createPublicKey, generateKeyPairSync, randomBytes } from 'node:crypto';
 
-export function bootstrap(projectDir, stateDir, hasDatabase = false) {
+export function bootstrap(projectDir, stateDir, hasInitializedDatabase = false) {
   const envFile = path.join(projectDir, '.env');
   const savedEnv = path.join(stateDir, '.env');
   const secretsDir = path.join(projectDir, '.secrets');
@@ -22,9 +22,6 @@ export function bootstrap(projectDir, stateDir, hasDatabase = false) {
       writePrivate(envFile, fs.readFileSync(savedEnv), true);
       console.log('[bootstrap] Konfigurasi dipulihkan otomatis dari Docker.');
     } else {
-      if (hasDatabase) {
-        throw new Error('Database lama ditemukan tanpa backup konfigurasi. Pulihkan .env lama; data tidak dihapus.');
-      }
       const secrets = new Map();
       let env = fs.readFileSync(path.join(projectDir, '.env.example'), 'utf8');
       env = env.replace(/^([A-Z0-9_]+)=change-me-local-only\r?$/gm, (_, key) => {
@@ -43,6 +40,11 @@ export function bootstrap(projectDir, stateDir, hasDatabase = false) {
         'FIELD_ENCRYPTION_MASTER_KEY=76e615c41c9303747950656b727151dc65aced28b91aa891429beca78a695b7c');
       if (env.includes('change-me-local-only') || env.includes('replace-with-64-hex-characters')) {
         throw new Error('Template konfigurasi belum lengkap; .env tidak ditulis.');
+      }
+      if (hasInitializedDatabase) {
+        // Unknown database credentials and encryption keys cannot be reconstructed safely.
+        env += `\nDEMO_DATA_SUFFIX=-demo-${randomBytes(6).toString('hex')}\n`;
+        console.log('[bootstrap] Data lama tetap disimpan; menyiapkan penyimpanan demo baru otomatis.');
       }
       writePrivate(envFile, env, true);
     }
@@ -72,5 +74,5 @@ export function bootstrap(projectDir, stateDir, hasDatabase = false) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  bootstrap(process.cwd(), '/state', process.env.HAS_DATABASE === '1');
+  bootstrap(process.cwd(), '/state', fs.existsSync('/database/PG_VERSION'));
 }

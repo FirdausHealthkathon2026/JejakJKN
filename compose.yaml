@@ -533,5 +533,8 @@ networks:
 
 volumes:
   postgres-data:
+    name: ${COMPOSE_PROJECT_NAME:-jejakjkn}_postgres-data${DEMO_DATA_SUFFIX:-}
   redis-data:
+    name: ${COMPOSE_PROJECT_NAME:-jejakjkn}_redis-data${DEMO_DATA_SUFFIX:-}
   rabbitmq-data:
+    name: ${COMPOSE_PROJECT_NAME:-jejakjkn}_rabbitmq-data${DEMO_DATA_SUFFIX:-}
